@@ -26,6 +26,9 @@
     BK_NGT: { kh: /^BANGKECHIPHI_KCB_6556$/i, re: /^BẢNG KÊ BHYT NGOẠI TRÚ/i, label: 'Bảng kê BHYT ngoại trú (ký trên PDF)', pdf: true, tab: 'Bảng kê', only: 'ngoaitru' },
     BK_NGT_K: { kh: /^BANGKECHIPHI_KCB_6556_KHONG_BHYT$/i, re: /^BẢNG KÊ KBHYT NGOẠI TRÚ/i, label: 'Bảng kê không BHYT ngoại trú (ký trên PDF)', pdf: true, tab: 'Bảng kê', only: 'ngoaitru' },
     // Phiếu điều trị: mỗi tờ điều trị chưa ký là 1 dòng "Phiếu theo dõi điều trị đơn nội trú (Phiếu: n - ...)"
+    // Cận lâm sàng: MỌI phiếu "Chưa ký" trong tab (KQ xét nghiệm, phiếu chỉ định XN / CĐHA / TTPT...).
+    // Vị trí ký do HIS cấu hình sẵn -> chỉ mở trình ký, bảo đảm có khung chữ ký, Hoàn tất.
+    CLS: { kh: /./, re: /./, label: 'Cận lâm sàng (mọi phiếu chưa ký trong tab)', pdf: true, tab: 'Cận lâm sàng', only: 'pdt', multi: true },
     PDT: { kh: /^PHIEUDIEUTRI_DACHON$/i, re: /^Phiếu theo dõi điều trị đơn/i, label: 'Phiếu điều trị (ký trên PDF, trên dòng BS...)', pdf: true, tab: 'Phiếu điều trị', only: 'pdt' }
   };
   const codeOnThisPage = c => {
@@ -329,7 +332,7 @@
     return !!(tr && /Đã ký|Chưa ký|Đã cập nhật/i.test(tr.textContent || ''));
   }
 
-  const NODATA_RE = /không có dữ liệu|không tìm thấy dữ liệu/i;
+  const NODATA_RE = /không có dữ liệu|không tìm thấy dữ liệu|không tải được tài liệu|không tải được file|không có file/i;
   const LOCK_RE = /bị kh[oó]a|bị khoá|để mở kh[oó]a|mở khoá/i;
   const UNLOCKED_RE = /đã được mở kh[oó]a|đã mở kh[oó]a|đã được mở khoá/i;
   // Cảnh báo chỉ để biết (bấm Xác nhận rồi làm tiếp), VD sau khi ký lại XML: "Số lần gửi XML 130 hoặc 4210 vượt quá 1 lần..."
@@ -1060,6 +1063,90 @@
     return w && wrapperPage(w) === wrapperPage(src) ? w : null;
   }
 
+  // ---------- Ký CẬN LÂM SÀNG (trang Khám bệnh nội trú): mọi phiếu "Chưa ký" trong tab ----------
+  const clsKey = tr => [cellText(tr, 'KY_HIEU_PHIEU'), cellText(tr, 'SO_PHIEU'), cellText(tr, 'TEN_PHIEU_F') || cellText(tr, 'TEN_PHIEU')].join('|');
+  const clsName = tr => (cellText(tr, 'TEN_PHIEU_F') || cellText(tr, 'TEN_PHIEU') || cellText(tr, 'KY_HIEU_PHIEU')).split('\n')[0].slice(0, 90);
+  const clsTodo = tr => {
+    const s = rowStatus(tr);
+    return s === 'todo' || (s === 'partial' && !tr.querySelector('[data-type="btn-huy-ky-so"]'));
+  };
+
+  async function signClsAll(ctx, dryRun) {
+    const results = [];
+    const tried = new Set();
+    for (let guard = 0; guard < 60 && !stopRequested; guard++) {
+      const ks = await ensureKhac(ctx, CODES.CLS.tab);
+      await waitGridStable(ctx);
+      const rows = findDocRows(currentKySoFor(ctx) || ks).filter(tr => cellText(tr, 'KY_HIEU_PHIEU') && clsTodo(tr) && !tried.has(clsKey(tr)));
+      const tr = rows[0];
+      if (!tr) break;
+      const key = clsKey(tr), name = clsName(tr);
+      tried.add(key);
+      let r;
+      try { r = await signClsRow(ctx, tr, key, name, dryRun); }
+      catch (e) {
+        if (e.message === 'Đã dừng') throw e;
+        r = { code: 'CLS', result: 'error', note: `${name}: ${e.message}` };
+        await closePdfNoSign();
+      }
+      results.push(r);
+      ctx.log(`  CLS: ${r.result === 'ok' ? '✅' : r.result === 'skip' ? '⏭' : '❌'} ${r.note}`);
+      if (dryRun) break;
+    }
+    if (!tried.size) {
+      const r = { code: 'CLS', result: 'skip', note: 'Không có phiếu cận lâm sàng chưa ký' };
+      ctx.log(`  CLS: ⏭ ${r.note}`);
+      results.push(r);
+    }
+    return results;
+  }
+
+  async function signClsRow(ctx, tr, key, name, dryRun) {
+    const { btn, why } = findSignButton(tr);
+    if (!btn) return { code: 'CLS', result: 'error', note: `${name}: ${why}` };
+    ctx.log(`  CLS: ${name} - bấm ký...`);
+    let t0 = Date.now(), reclicks = 0, lastTick = 0, ready = false;
+    click(btn);
+    // Có phiếu bấm là ký luôn (XML), có phiếu mở trình ký PDF; phiếu rỗng -> HIS báo không có dữ liệu / không tải được
+    while (Date.now() - t0 < PDF_OPEN_WAIT_MS) {
+      if (stopRequested) throw new Error('Đã dừng');
+      await sleep(250);
+      handleMessageBoxes();
+      if (pdfViewerReady()) { ready = true; break; }
+      if (lastSuccessAt > t0) { await sleep(500); await waitGridStable(ctx); return { code: 'CLS', result: 'ok', note: `Đã ký: ${name}` }; }
+      if (lastNoDataAt > t0) { await closePdfNoSign(); return { code: 'CLS', result: 'skip', nodata: true, note: `${name}: không có dữ liệu / không tải được phiếu -> bỏ qua` }; }
+      if (lastErrorAt > t0) { await closePdfNoSign(); return { code: 'CLS', result: 'error', note: `${name}: ${lastErrorMsg}` }; }
+      if (lastUnlockedAt > t0 && reclicks < 2) {
+        reclicks++;
+        await sleep(800);
+        const row = findDocRows(currentKySoFor(ctx) || ctx.ks).find(r => clsKey(r) === key);
+        const b2 = row && findSignButton(row).btn;
+        if (!b2) return { code: 'CLS', result: 'error', note: `${name}: mở khóa xong không thấy lại nút ký` };
+        t0 = Date.now(); click(b2); continue;
+      }
+      const sec = Math.floor((Date.now() - t0) / 1000);
+      if (sec - lastTick >= 5) { lastTick = sec; ctx.log(`    đang chờ HIS mở phiếu... ${sec}s`); }
+    }
+    if (!ready) {
+      // Không mở được trình ký (thường do phiếu không có nội dung PDF) -> bỏ qua
+      await closePdfNoSign();
+      return { code: 'CLS', result: 'skip', nodata: true, note: `${name}: HIS không mở được phiếu (không có dữ liệu / không tải được PDF) -> bỏ qua` };
+    }
+    // Chờ HIS tự đặt khung chữ ký theo vị trí cấu hình sẵn
+    await sleep(1000);
+    { let sig = '', since = Date.now(); const s0 = Date.now();
+      while (Date.now() - s0 < 6000) { const s = pdfCurrentPage() + '|' + allWrappers().length; if (s !== sig) { sig = s; since = Date.now(); } else if (Date.now() - since >= 1200) break; await sleep(150); } }
+    if (!allWrappers().length) {
+      const w = await addSignatureOnce(PDT_ROLE); // vị trí mặc định HIS cấu hình cho loại phiếu này
+      if (!w) throw new Error('Không thêm được khung chữ ký');
+    }
+    ctx.log(`    ${allWrappers().length} khung chữ ký (vị trí HIS cấu hình sẵn)`);
+    if (dryRun) return { code: 'CLS', result: 'skip', dry: true, note: `CHẠY THỬ ${name}: đã có khung chữ ký, CHƯA bấm "Hoàn tất ký số". Bạn kiểm tra vị trí rồi bấm Đóng.` };
+    const err = await completePdfSign(ctx, 'CLS');
+    if (err) return { code: 'CLS', result: 'error', note: `${name}: ${err}` };
+    return { code: 'CLS', result: 'ok', note: `Đã ký: ${name}` };
+  }
+
   // Khung chữ ký nằm ngay PHÍA TRÊN dòng tên bác sĩ
   function bsTarget(info, h, w) {
     const pg = info.pages.find(p => p.n === h.page) || { h: 842, w: 595 };
@@ -1089,6 +1176,11 @@
     await openTab(ks, firstTab);
     const ctx = { p, info, ks, log, curTab: firstTab, bkSigned: opts.ctxInfo && opts.ctxInfo.bkSigned };
     if (dryRun) {
+      if (pdfCodes[0] === 'CLS') {
+        try { await signClsAll(ctx, true); }
+        catch (e) { if (e.message === 'Đã dừng') throw e; log(`  CLS: ❌ ${e.message}`); }
+        return [];
+      }
       if (pdfCodes[0] === 'PDT') {
         try { await signPhieuDieuTri(ctx, opts.ngay || todayVN(), true); }
         catch (e) { if (e.message === 'Đã dừng') throw e; log(`  PĐT: ❌ ${e.message}`); }
@@ -1165,6 +1257,10 @@
         results.push(...await signPhieuDieuTri(ctx, opts.ngay || todayVN(), false));
         continue;
       }
+      if (bkCode === 'CLS') {
+        results.push(...await signClsAll(ctx, false));
+        continue;
+      }
       let r;
       try { r = await signBangKe(ctx, opts.roles || ['NV', 'KT'], false, bkCode); }
       catch (e) {
@@ -1193,6 +1289,7 @@
   // Các vị trí cần ký của 1 BN theo lựa chọn hiện tại
   const itemsFor = (codes, opts) => codes.flatMap(c =>
     c === 'PDT' ? [`PDT:${opts.ngay || todayVN()}`]
+      : c === 'CLS' ? ['CLS']
       : CODES[c].pdf ? (opts.roles || ['NV', 'KT']).map(k => `${c}:${k}`)
         : [c]);
   const itemLabel = it => {
@@ -1212,9 +1309,11 @@
     const at = new Date().toLocaleString('vi-VN');
     const missing = [];
     for (const c of codes) {
-      if (c === 'PDT') {
-        const it = `PDT:${opts.ngay || todayVN()}`;
-        const pr = rs.filter(r => r.code === 'PDT');
+      if (c === 'PDT' || c === 'CLS') {
+        const it = c === 'PDT' ? `PDT:${opts.ngay || todayVN()}` : 'CLS';
+        const pr = rs.filter(r => r.code === c);
+        // CLS: phiếu mới phát sinh hằng ngày -> KHÔNG ghi nhớ "đã xong" (lượt sau vẫn quét tab), chỉ báo phiếu lỗi
+        if (c === 'CLS') { pr.filter(r => !isDoneResult(r)).forEach(r => missing.push({ it, note: r.note })); continue; }
         if (pr.length && pr.every(isDoneResult)) mine[it] = at;
         else missing.push({ it, note: pr.filter(r => !isDoneResult(r)).map(r => r.note).join('; ') || 'Chưa chạy tới' });
         continue;
@@ -1505,7 +1604,7 @@
     const panel = document.createElement('div');
     panel.id = 'bhyt-ksh-panel';
     panel.innerHTML = `
-      <div class="ksh-head"><b>Ký số hàng loạt ${IS_PDT ? 'Phiếu điều trị / Bảng kê' : 'XML'} <span style="font-weight:normal;opacity:.8">(bản 12.9)</span></b><span class="ksh-x" title="Đóng">✕</span></div>
+      <div class="ksh-head"><b>Ký số hàng loạt ${IS_PDT ? 'PĐT / Bảng kê / CLS' : 'XML'} <span style="font-weight:normal;opacity:.8">(bản 13)</span></b><span class="ksh-x" title="Đóng">✕</span></div>
       <div class="ksh-codes"></div>
       <div class="ksh-skip"><label><input type="checkbox" class="ksh-skipdone" checked> <b>Bỏ qua vị trí đã ký xong ở lượt trước</b> (không mở lại hồ sơ đã ký)</label></div>
       <div class="ksh-bar">
