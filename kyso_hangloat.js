@@ -1066,14 +1066,15 @@
   }
 
   // ---------- Ký VỎ BỆNH ÁN (tab "Hồ sơ bệnh án", Trang 1/2/3) ----------
-  // trang: số trang bệnh án (từ mã ..._TRANG_n); optRe: chữ trong ô chọn vai trò của HIS; anchor: dòng mốc trên PDF
+  // trang: số trang bệnh án (từ mã ..._TRANG_n); optRe: TÊN CHỨC VỤ trong HIS (trang smartca-cauhinh-loaiphieu);
+  // anchor: dòng mốc in trên PDF (có thể khác tên chức vụ, VD chức vụ "BÁC SĨ LẬP BỆNH ÁN" - PDF in "Bác sĩ làm bệnh án")
   const HSBA_ROLES = {
     GD: { trang: 1, label: 'T1 · Giám đốc', optRe: /GIÁM ĐỐC/i, anchor: 'GIÁM ĐỐC', def: false },
     TK: { trang: 1, label: 'T1 · Trưởng khoa', optRe: /TRƯỞNG KHOA/i, anchor: 'TRƯỞNG KHOA', def: false },
-    BSLBA: { trang: 2, label: 'T2 · BS làm bệnh án', optRe: /LÀM BỆNH ÁN/i, anchor: 'BÁC SĨ LÀM BỆNH ÁN', def: true },
+    BSLBA: { trang: 2, label: 'T2 · BS lập bệnh án', optRe: /(LẬP|LÀM) BỆNH ÁN/i, anchor: 'BÁC SĨ LÀM BỆNH ÁN', def: true },
     BSDT: { trang: 3, label: 'T3 · BS điều trị', optRe: /BÁC S[ĨỸ] ĐIỀU TRỊ|THẦY THUỐC ĐIỀU TRỊ/i, anchor: 'BÁC SĨ ĐIỀU TRỊ', def: true },
-    NGIAO: { trang: 3, label: 'T3 · Người giao HS', optRe: /NGƯỜI GIAO/i, anchor: 'NGƯỜI GIAO HỒ SƠ', def: false },
-    NNHAN: { trang: 3, label: 'T3 · Người nhận HS', optRe: /NGƯỜI NHẬN/i, anchor: 'NGƯỜI NHẬN HỒ SƠ', def: false }
+    NGIAO: { trang: 3, label: 'T3 · NV giao hồ sơ', optRe: /GIAO HỒ SƠ/i, anchor: 'NGƯỜI GIAO HỒ SƠ', def: false },
+    NNHAN: { trang: 3, label: 'T3 · NV nhận hồ sơ', optRe: /NHẬN HỒ SƠ/i, anchor: 'NGƯỜI NHẬN HỒ SƠ', def: false }
   };
   const hsbaTrang = tr => Number((cellText(tr, 'KY_HIEU_PHIEU').match(/_TRANG_([123])$/i) || [])[1] || (clsName(tr).match(/\(Trang ([123])\)/i) || [])[1] || 0);
 
