@@ -29,6 +29,8 @@
     // Cận lâm sàng: MỌI phiếu "Chưa ký" trong tab (KQ xét nghiệm, phiếu chỉ định XN / CĐHA / TTPT...).
     // Vị trí ký do HIS cấu hình sẵn -> chỉ mở trình ký, bảo đảm có khung chữ ký, Hoàn tất.
     CLS: { kh: /./, re: /./, label: 'Cận lâm sàng (mọi phiếu chưa ký trong tab)', pdf: true, tab: 'Cận lâm sàng', only: 'pdt', multi: true },
+    // Vỏ bệnh án (Trang 1/2/3): mỗi trang ký các vai trò khác nhau (chọn ở dòng "Vai trò bệnh án")
+    HSBA: { kh: /_TRANG_[123]$/i, re: /Bệnh án .*\(Trang [123]\)/i, label: 'Hồ sơ bệnh án (Trang 1 / 2 / 3)', pdf: true, tab: 'Hồ sơ bệnh án', only: 'pdt', multi: true },
     PDT: { kh: /^PHIEUDIEUTRI_DACHON$/i, re: /^Phiếu theo dõi điều trị đơn/i, label: 'Phiếu điều trị (ký trên PDF, trên dòng BS...)', pdf: true, tab: 'Phiếu điều trị', only: 'pdt' }
   };
   const codeOnThisPage = c => {
@@ -1063,6 +1065,101 @@
     return w && wrapperPage(w) === wrapperPage(src) ? w : null;
   }
 
+  // ---------- Ký VỎ BỆNH ÁN (tab "Hồ sơ bệnh án", Trang 1/2/3) ----------
+  // trang: số trang bệnh án (từ mã ..._TRANG_n); optRe: chữ trong ô chọn vai trò của HIS; anchor: dòng mốc trên PDF
+  const HSBA_ROLES = {
+    GD: { trang: 1, label: 'T1 · Giám đốc', optRe: /GIÁM ĐỐC/i, anchor: 'GIÁM ĐỐC', def: false },
+    TK: { trang: 1, label: 'T1 · Trưởng khoa', optRe: /TRƯỞNG KHOA/i, anchor: 'TRƯỞNG KHOA', def: false },
+    BSLBA: { trang: 2, label: 'T2 · BS làm bệnh án', optRe: /LÀM BỆNH ÁN/i, anchor: 'BÁC SĨ LÀM BỆNH ÁN', def: true },
+    BSDT: { trang: 3, label: 'T3 · BS điều trị', optRe: /BÁC S[ĨỸ] ĐIỀU TRỊ|THẦY THUỐC ĐIỀU TRỊ/i, anchor: 'BÁC SĨ ĐIỀU TRỊ', def: true },
+    NGIAO: { trang: 3, label: 'T3 · Người giao HS', optRe: /NGƯỜI GIAO/i, anchor: 'NGƯỜI GIAO HỒ SƠ', def: false },
+    NNHAN: { trang: 3, label: 'T3 · Người nhận HS', optRe: /NGƯỜI NHẬN/i, anchor: 'NGƯỜI NHẬN HỒ SƠ', def: false }
+  };
+  const hsbaTrang = tr => Number((cellText(tr, 'KY_HIEU_PHIEU').match(/_TRANG_([123])$/i) || [])[1] || (clsName(tr).match(/\(Trang ([123])\)/i) || [])[1] || 0);
+
+  async function signHsbaAll(ctx, roleKeys, dryRun) {
+    const results = [];
+    const tried = new Set();
+    for (let guard = 0; guard < 6 && !stopRequested; guard++) {
+      const ks = await ensureKhac(ctx, CODES.HSBA.tab);
+      await waitGridStable(ctx);
+      const rows = findDocRows(currentKySoFor(ctx) || ks)
+        .filter(tr => hsbaTrang(tr) && !tried.has(hsbaTrang(tr)) && rowStatus(tr) !== 'done')
+        .sort((a, b) => hsbaTrang(a) - hsbaTrang(b));
+      const tr = rows.find(r => roleKeys.some(k => HSBA_ROLES[k].trang === hsbaTrang(r)));
+      if (!tr) break;
+      const n = hsbaTrang(tr);
+      tried.add(n);
+      let r;
+      try { r = await signHsbaRow(ctx, tr, n, roleKeys.filter(k => HSBA_ROLES[k].trang === n), dryRun); }
+      catch (e) {
+        if (e.message === 'Đã dừng') throw e;
+        r = { code: 'HSBA', result: 'error', note: `Trang ${n}: ${e.message}` };
+        await closePdfNoSign();
+      }
+      results.push(r);
+      ctx.log(`  BA: ${r.result === 'ok' ? '✅' : r.result === 'skip' ? '⏭' : '❌'} ${r.note}`);
+      if (dryRun) break;
+    }
+    if (!tried.size) {
+      const r = { code: 'HSBA', result: 'skip', note: 'Không có trang bệnh án nào cần ký (theo vai trò đã chọn)' };
+      ctx.log(`  BA: ⏭ ${r.note}`);
+      results.push(r);
+    }
+    return results;
+  }
+
+  async function signHsbaRow(ctx, tr, n, keys, dryRun) {
+    const signed = signedRolesText(tr); // "... đã ký" dưới tên phiếu
+    const todo = keys.filter(k => !HSBA_ROLES[k].optRe.test(signed));
+    if (!todo.length) return { code: 'HSBA', result: 'skip', note: `Trang ${n}: đã ký (${signed.trim() || 'đủ vai trò'})` };
+    const { btn, why } = findSignButton(tr);
+    if (!btn) return { code: 'HSBA', result: 'error', note: `Trang ${n}: ${why}` };
+    ctx.log(`  BA: Trang ${n} - mở trình ký (${todo.map(k => HSBA_ROLES[k].label).join(' + ')})...`);
+    const ready = await openPdfViewer(ctx, btn, () => findDocRows(currentKySoFor(ctx) || ctx.ks).find(r => hsbaTrang(r) === n), 'BA');
+    if (ready !== true) {
+      if (ready) return { code: 'HSBA', result: 'error', note: `Trang ${n}: ${ready}` };
+      return signed ? { code: 'HSBA', result: 'skip', note: `Trang ${n}: HIS không mở trình ký (đã có chữ ký: ${signed.trim()}) - vai trò còn lại ký bằng tài khoản khác` }
+        : { code: 'HSBA', result: 'error', note: `Trang ${n}: quá ${PDF_OPEN_WAIT_MS / 1000} giây HIS chưa mở trình ký` };
+    }
+    const info = await mainCall('pdfText', { patterns: todo.map(k => HSBA_ROLES[k].anchor.replace(/\s+/g, '\\s+')).concat(['ký, ghi rõ họ tên']) });
+    const up = s => String(s || '').normalize('NFC').replace(/\s+/g, ' ').toUpperCase();
+    info.hits = info.hits.map(h => ({ ...h, s: up(h.s) }));
+    const done = [], keep = [];
+    for (const k of todo) {
+      const role = HSBA_ROLES[k];
+      const pages = info.hits.filter(h => h.s.includes(role.anchor)).map(h => h.page);
+      if (!pages.length) { ctx.log(`    ⚠ không thấy dòng "${role.anchor}" trên trang ${n}`); continue; }
+      const page = Math.max(...pages);
+      await gotoPdfPage(page);
+      let w;
+      try { w = await addSignatureForRole(role, page); }
+      catch (e) { ctx.log(`    ⏭ ${role.label}: ${e.message}`); continue; } // tài khoản không có vai trò này
+      const t = computeTarget(info, role, page, w);
+      if (!t) { ctx.log(`    ⚠ không tính được vị trí "${role.anchor}"`); continue; }
+      const getW = () => pageWrappers(page).filter(x => role.optRe.test((x.textContent || '').normalize('NFC'))).pop();
+      let moved = await dragWrapperTo(getW, t.left, t.top);
+      if (!moved) {
+        try {
+          const res = await mainCall('placeSignature', { page, roleRe: role.optRe.source, left: t.left, top: t.top });
+          moved = !!res.saved && Math.abs(res.saved.left - t.left) < 4 && Math.abs(res.saved.top - t.top) < 4;
+        } catch (e) { ctx.log('    ' + e.message); }
+      }
+      if (!moved) { ctx.log(`    ⚠ không kéo được chữ ký ${role.label}`); continue; }
+      done.push(role.label); keep.push(role);
+    }
+    // Bỏ khung thừa (VD HIS tự thêm vai trò không chọn)
+    for (const x of allWrappers()) {
+      const tx = (x.textContent || '').normalize('NFC');
+      if (!keep.some(r => r.optRe.test(tx))) await removeWrapper(x);
+    }
+    if (!done.length) { await closePdfNoSign(); return { code: 'HSBA', result: 'skip', note: `Trang ${n}: tài khoản không ký được vai trò nào đã chọn -> bỏ qua` }; }
+    if (dryRun) return { code: 'HSBA', result: 'skip', dry: true, note: `CHẠY THỬ Trang ${n}: đã đặt chữ ký ${done.join(' + ')}, CHƯA bấm "Hoàn tất ký số". Bạn kiểm tra rồi bấm Đóng.` };
+    const err = await completePdfSign(ctx, 'BA');
+    if (err) return { code: 'HSBA', result: 'error', note: `Trang ${n}: ${err}` };
+    return { code: 'HSBA', result: 'ok', note: `Đã ký Trang ${n} (${done.join(' + ')})` };
+  }
+
   // ---------- Ký CẬN LÂM SÀNG (trang Khám bệnh nội trú): mọi phiếu "Chưa ký" trong tab ----------
   const clsKey = tr => [cellText(tr, 'KY_HIEU_PHIEU'), cellText(tr, 'SO_PHIEU'), cellText(tr, 'TEN_PHIEU_F') || cellText(tr, 'TEN_PHIEU')].join('|');
   const clsName = tr => (cellText(tr, 'TEN_PHIEU_F') || cellText(tr, 'TEN_PHIEU') || cellText(tr, 'KY_HIEU_PHIEU')).split('\n')[0].slice(0, 90);
@@ -1246,6 +1343,11 @@
     await openTab(ks, firstTab);
     const ctx = { p, info, ks, log, curTab: firstTab, bkSigned: opts.ctxInfo && opts.ctxInfo.bkSigned };
     if (dryRun) {
+      if (pdfCodes[0] === 'HSBA') {
+        try { await signHsbaAll(ctx, opts.hroles || [], true); }
+        catch (e) { if (e.message === 'Đã dừng') throw e; log(`  BA: ❌ ${e.message}`); }
+        return [];
+      }
       if (pdfCodes[0] === 'CLS') {
         try { await signClsAll(ctx, true); }
         catch (e) { if (e.message === 'Đã dừng') throw e; log(`  CLS: ❌ ${e.message}`); }
@@ -1331,6 +1433,10 @@
         results.push(...await signClsAll(ctx, false));
         continue;
       }
+      if (bkCode === 'HSBA') {
+        results.push(...await signHsbaAll(ctx, opts.hroles || [], false));
+        continue;
+      }
       let r;
       try { r = await signBangKe(ctx, opts.roles || ['NV', 'KT'], false, bkCode); }
       catch (e) {
@@ -1359,7 +1465,7 @@
   // Các vị trí cần ký của 1 BN theo lựa chọn hiện tại
   const itemsFor = (codes, opts) => codes.flatMap(c =>
     c === 'PDT' ? [`PDT:${opts.ngay || todayVN()}`]
-      : c === 'CLS' ? ['CLS']
+      : c === 'CLS' || c === 'HSBA' ? [c]
       : CODES[c].pdf ? (opts.roles || ['NV', 'KT']).map(k => `${c}:${k}`)
         : [c]);
   const itemLabel = it => {
@@ -1379,11 +1485,11 @@
     const at = new Date().toLocaleString('vi-VN');
     const missing = [];
     for (const c of codes) {
-      if (c === 'PDT' || c === 'CLS') {
-        const it = c === 'PDT' ? `PDT:${opts.ngay || todayVN()}` : 'CLS';
+      if (c === 'PDT' || c === 'CLS' || c === 'HSBA') {
+        const it = c === 'PDT' ? `PDT:${opts.ngay || todayVN()}` : c;
         const pr = rs.filter(r => r.code === c);
-        // CLS: phiếu mới phát sinh hằng ngày -> KHÔNG ghi nhớ "đã xong" (lượt sau vẫn quét tab), chỉ báo phiếu lỗi
-        if (c === 'CLS') { pr.filter(r => !isDoneResult(r)).forEach(r => missing.push({ it, note: r.note })); continue; }
+        // CLS / Bệnh án: KHÔNG ghi nhớ "đã xong" (lượt sau vẫn kiểm tra tab), chỉ báo phiếu lỗi
+        if (c === 'CLS' || c === 'HSBA') { pr.filter(r => !isDoneResult(r)).forEach(r => missing.push({ it, note: r.note })); continue; }
         if (pr.length && pr.every(isDoneResult)) mine[it] = at;
         else missing.push({ it, note: pr.filter(r => !isDoneResult(r)).map(r => r.note).join('; ') || 'Chưa chạy tới' });
         continue;
@@ -1674,7 +1780,7 @@
     const panel = document.createElement('div');
     panel.id = 'bhyt-ksh-panel';
     panel.innerHTML = `
-      <div class="ksh-head"><b>Ký số hàng loạt ${IS_PDT ? 'PĐT / Bảng kê / CLS' : 'XML'} <span style="font-weight:normal;opacity:.8">(bản 13)</span></b><span class="ksh-x" title="Đóng">✕</span></div>
+      <div class="ksh-head"><b>Ký số hàng loạt ${IS_PDT ? 'PĐT / Bảng kê / CLS / Bệnh án' : 'XML'} <span style="font-weight:normal;opacity:.8">(bản 13.1)</span></b><span class="ksh-x" title="Đóng">✕</span></div>
       <div class="ksh-codes"></div>
       <div class="ksh-skip"><label><input type="checkbox" class="ksh-skipdone" checked> <b>Bỏ qua vị trí đã ký xong ở lượt trước</b> (không mở lại hồ sơ đã ký)</label></div>
       <div class="ksh-bar">
@@ -1722,6 +1828,12 @@
       day.className = 'ksh-roles';
       day.innerHTML = `Ngày tạo phiếu: <input type="date" class="ksh-ngay" value="${iso}"> <span style="color:#666">(chỉ ký phiếu tạo đúng ngày này)</span>`;
       codesBox.appendChild(day);
+      // Vai trò ký vỏ bệnh án (mỗi trang 1 nhóm); mặc định: BS làm bệnh án (T2) + BS điều trị (T3)
+      const hr = document.createElement('div');
+      hr.className = 'ksh-roles';
+      hr.innerHTML = 'Vai trò bệnh án: ' + Object.keys(HSBA_ROLES).map(k =>
+        `<label><input type="checkbox" class="ksh-hrole" value="${k}" ${HSBA_ROLES[k].def ? 'checked' : ''}> ${HSBA_ROLES[k].label}</label>`).join(' ');
+      codesBox.appendChild(hr);
     }
     if (pdfBoxes.length) {
       // 1 dòng chọn vai trò dùng chung cho các loại Bảng kê
@@ -1863,11 +1975,16 @@
         ngay = `${v[2]}/${v[1]}/${v[0]}`;
         if (!dryRun && ngay !== todayVN() && !confirm(`Ngày đang chọn (${ngay}) KHÁC hôm nay (${todayVN()}).\nVẫn ký phiếu điều trị tạo ngày ${ngay}?`)) return;
       }
+      const hrolesPre = Array.from(panel.querySelectorAll('.ksh-hrole:checked')).map(c => c.value);
       const desc = codes.map(c => c === 'PDT' ? `Phiếu điều trị tạo ngày ${ngay}`
-        : CODES[c].pdf ? `${CODES[c].label.replace(/ \(ký trên PDF\)/, '')} (${roles.map(k => BK_ROLES[k].label).join(' + ')})` : c).join(', ');
+        : c === 'CLS' ? 'Cận lâm sàng (mọi phiếu chưa ký)'
+          : c === 'HSBA' ? `Bệnh án (${hrolesPre.map(k => HSBA_ROLES[k].label).join(' + ')})`
+            : CODES[c].pdf ? `${CODES[c].label.replace(/ \(ký trên PDF\)/, '')} (${roles.map(k => BK_ROLES[k].label).join(' + ')})` : c).join(', ');
       if (!dryRun && !confirm(`Ký số ${desc} cho ${list.length} bệnh nhân?\n\nChữ ký số có giá trị pháp lý. Chỉ chọn những hồ sơ đã rà soát xong.`)) return;
       $('.ksh-log').innerHTML = '';
-      run(list, codes, dryRun, ui, { roles, ngay, skipDone: $('.ksh-skipdone').checked });
+      const hroles = Array.from(panel.querySelectorAll('.ksh-hrole:checked')).map(c => c.value);
+      if (codes.includes('HSBA') && !hroles.length) { alert('Chọn ít nhất 1 vai trò ký bệnh án.'); return; }
+      run(list, codes, dryRun, ui, { roles, ngay, hroles, skipDone: $('.ksh-skipdone').checked });
     };
     $('.ksh-dry').addEventListener('click', () => start(true));
     $('.ksh-start').addEventListener('click', () => start(false));
