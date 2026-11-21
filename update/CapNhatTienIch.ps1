@@ -46,6 +46,8 @@ try {
     # An toan: thu muc dich phai la thu muc tien ich (co manifest.json cua tien ich), khong phai o dia goc
     $targetFull = [IO.Path]::GetFullPath($target)
     if ($targetFull.TrimEnd('\').Length -le 3) { Write-UpdLog "Thu muc dich khong hop le: $targetFull"; exit 1 }
+    # May goc (thu muc dang phat trien, co .git) -> KHONG bao gio chep de len
+    if (Test-Path (Join-Path $targetFull '.git')) { exit 0 }
     $local = Get-ManifestInfo (Join-Path $targetFull 'manifest.json')
     if (-not (Test-OurExtension $local)) { Write-UpdLog "Thu muc dich khong phai thu muc tien ich: $targetFull"; exit 1 }
     $localVer = [string]$local.version

@@ -39,16 +39,21 @@ try {
 
     # Tac vu hen gio cua nguoi dung hien tai (khong can quyen Quan tri)
     $tr = 'wscript.exe "' + $vbs + '"'
-    & schtasks.exe /Create /F /SC MINUTE /MO $Minutes /TN $TaskName /TR $tr | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "Khong tao duoc tac vu hen gio (schtasks loi $LASTEXITCODE)" }
-    # Them 1 lan luc dang nhap (neu may cho phep; khong bat buoc)
-    & schtasks.exe /Create /F /SC ONLOGON /TN ($TaskName + '_DangNhap') /TR $tr 2>$null | Out-Null
+    # (PowerShell 5.1: loi tren stderr cua lenh ngoai bi coi la loi dung chuong trinh -> tam cho phep 'Continue')
+    $ErrorActionPreference = 'Continue'
+    $out = & schtasks.exe /Create /F /SC MINUTE /MO $Minutes /TN $TaskName /TR $tr 2>&1
+    $okMain = ($LASTEXITCODE -eq 0)
+    # Them 1 lan luc dang nhap Windows: can quyen Quan tri -> khong co thi bo qua (khong bat buoc)
+    $null = & schtasks.exe /Create /F /SC ONLOGON /TN ($TaskName + '_DangNhap') /TR $tr 2>&1
+    $okLogon = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = 'Stop'
+    if (-not $okMain) { throw ("Khong tao duoc tac vu hen gio: " + (($out | Out-String).Trim())) }
 
     Say ''
     Say '=== DA BAT TU DONG CAP NHAT ===' 'Green'
     Say ("Nguon      : " + $Source)
     Say ("Tien ich   : " + $Target)
-    Say ("Kiem tra   : moi $Minutes phut (tac vu '$TaskName')")
+    Say ("Kiem tra   : moi $Minutes phut (tac vu '$TaskName')" + $(if ($okLogon) { ' + khi dang nhap Windows' } else { '' }))
     Say ("Nhat ky    : " + (Join-Path $home2 'capnhat.log'))
     Say ''
     Say 'Dang kiem tra ban moi lan dau...'
