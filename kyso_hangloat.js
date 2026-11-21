@@ -1096,6 +1096,26 @@
     for (const x of allWrappers()) if (x !== w && x.id !== w.id) await removeWrapper(x);
     const t = computeTarget({ ...info, hits: info.hits.map(h => ({ ...h, s: up(h.s) })) }, role, page, w);
     if (!t) throw new Error(`Không tính được vị trí dưới "${anchor}"`);
+    // Có dòng TÊN BÁC SĨ ngay dưới dòng mốc (VD "Nguyễn Văn Phúc") -> kéo chữ ký LÊN, nằm gọn giữa mốc và tên
+    try {
+      const all = await mainCall('pdfText', { patterns: ['\\S'] });
+      const sc = all.scale || 1.5;
+      const pg = all.pages.find(p => p.n === page) || { h: 842 };
+      const a = hits.filter(h => h.page === page).pop();
+      const aCx = a.x + a.w / 2;
+      const below = all.hits.filter(h => h.page === page && h.y < a.y - 3 && h.y > a.y - 130 &&
+        Math.abs((h.x + h.w / 2) - aCx) < 110 && !/ký, ghi rõ|ghi rõ họ tên/i.test(h.s) && h.s.trim().length > 2);
+      if (below.length) {
+        const nm = below.sort((p, q) => q.y - p.y)[0];                 // dòng gần mốc nhất phía dưới = tên BS
+        const nameTop = (pg.h - nm.y - (nm.fs || 11)) * sc;           // mép trên dòng tên (px)
+        const labelBottom = (pg.h - a.y) * sc + 2;                     // ngay dưới dòng mốc (px)
+        const wh = w.offsetHeight || 65;
+        if (t.top + wh > nameTop - 2) {
+          // nằm sát trên tên; thiếu chỗ thì cho phép chồng nhẹ lên dòng mốc (tối đa nửa khung)
+          t.top = Math.round(Math.max(labelBottom - wh / 2, nameTop - wh - 2));
+        }
+      }
+    } catch (e) { ctx.log('    (không đọc được dòng tên bác sĩ: ' + e.message + ')'); }
     const id = w.id;
     let moved = await dragWrapperTo(() => (id && document.getElementById(id)) || allWrappers().find(x => wrapperPage(x) === page), t.left, t.top);
     if (!moved && id) {
