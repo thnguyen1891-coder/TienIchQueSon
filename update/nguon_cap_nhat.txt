@@ -2,9 +2,8 @@
 # Ghi DUNG 1 dong SOURCE= (bo dau # o dong muon dung). Vi du:
 #
 #   Thu muc mang chung (khuyen dung trong mang noi bo):
-#     SOURCE=\\MAY-CHU\TienIch\KiemTraTheBHYT_VNPT_HIS
+#     SOURCE=\\DESKTOP-R6GLQ3D\KiemTraTheBHYT_VNPT_HIS
 #
-#   GitHub (repo cong khai), file zip cua nhanh main:
-#     SOURCE=https://github.com/TEN-TAI-KHOAN/TEN-REPO/archive/refs/heads/main.zip
+#   GitHub (repo cong khai), file zip cua nhanh main  <- DANG DUNG
 #
-SOURCE=\\DESKTOP-R6GLQ3D\KiemTraTheBHYT_VNPT_HIS
+SOURCE=https://github.com/thnguyen1891-coder/TienIchQueSon/archive/refs/heads/main.zip

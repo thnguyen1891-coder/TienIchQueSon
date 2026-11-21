@@ -52,10 +52,10 @@ BƯỚC 4: SỬ DỤNG TRÊN VNPT HIS
 
 BƯỚC 5: BẬT TỰ ĐỘNG CẬP NHẬT (MỖI MÁY LÀM 1 LẦN SAU BƯỚC 2)
 --------------------------------------------------------------------------------
-Người quản lý (làm 1 lần, trước khi phát cho các máy):
-  - Mở file update\nguon_cap_nhat.txt, ghi đúng 1 dòng SOURCE=... :
-      + Thư mục mạng chung, VD:  SOURCE=\\MAY-CHU\TienIch\KiemTraTheBHYT_VNPT_HIS
-      + Hoặc GitHub (repo công khai): SOURCE=https://github.com/<tài-khoản>/<repo>/archive/refs/heads/main.zip
+Nguồn cập nhật (đã cấu hình sẵn trong update\nguon_cap_nhat.txt):
+  GitHub: https://github.com/thnguyen1891-coder/TienIchQueSon
+  Cài mới cho máy: tải https://github.com/thnguyen1891-coder/TienIchQueSon/archive/refs/heads/main.zip,
+  giải nén ra 1 thư mục cố định (VD C:\APP\TienIchQueSon), làm BƯỚC 2 rồi BƯỚC 5.
 
 Trên mỗi máy (sau khi đã "Tải tiện ích đã giải nén" ở BƯỚC 2):
   - Bấm đúp update\CaiDat_TuDongCapNhat.bat -> hiện "DA BAT TU DONG CAP NHAT" là xong.
@@ -66,8 +66,7 @@ Trên mỗi máy (sau khi đã "Tải tiện ích đã giải nén" ở BƯỚC 
 
 Khi phát hành bản mới (người quản lý):
   1. Tăng "version" trong manifest.json (VD 2.3.0 -> 2.3.1). KHÔNG tăng thì các máy KHÔNG cập nhật.
-  2. Thư mục mạng: chạy  powershell -ExecutionPolicy Bypass -File update\DangBanMoi.ps1 -Dest "\\MAY-CHU\TienIch\KiemTraTheBHYT_VNPT_HIS"
-     GitHub: commit + push lên nhánh main.
+  2. GitHub Desktop: Commit to main -> Push origin. Các máy tự cập nhật trong vòng 30 phút.
 
 
 LƯU Ý PHIÊN BẢN v1.3.14:
