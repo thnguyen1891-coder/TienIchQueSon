@@ -1,0 +1,2540 @@
+/* ==========================================================
+   CSS CHO EXTENSION KIỂM TRA BHYT TRÊN VNPT HIS QUẢNG NAM
+   Scope: Tất cả class bắt đầu bằng bhyt-ext-* để tránh xung đột
+   ========================================================== */
+
+/* 0. Ẩn nút tạo thẻ TE1 dư thừa trong modal Bảng kê bán ngày & Bảng kê nội trú */
+#taothete1_3434,
+[name="taothete1_3434"],
+[id*="taothete1"],
+[name*="taothete1"],
+[id*="taothete"],
+[name*="taothete"],
+a[onclick*="taothete1"],
+button[onclick*="taothete1"],
+.btn-taothete1 {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+/* 1. Nút chèn trực tiếp vào Form VNPT HIS */
+.bhyt-ext-inline-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #115E59 !important;
+  border-radius: 4px !important;
+  padding: 4px 12px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 4px rgba(13, 148, 136, 0.3) !important;
+  transition: all 0.2s ease !important;
+  margin: 0 !important;
+  vertical-align: middle !important;
+  z-index: 5 !important;
+  height: 28px !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  pointer-events: auto !important;
+}
+
+/* Ẩn hoàn toàn nút nổi khi có modal hoặc form ký số mở */
+body.bhyt-modal-open #bhytExtFloatingRightBtn,
+body.bhyt-modal-open #bhytExtBangKeFloatingBtn,
+body.bhyt-modal-open .bhyt-ext-floating-right-btn,
+body.bhyt-kyso-open .bhyt-ext-floating-right-btn,
+body.bhyt-kyso-open #bhytExtFloatingRightBtn,
+body.bhyt-kyso-open #bhytExtBangKeFloatingBtn,
+html.bhyt-modal-open .bhyt-ext-floating-right-btn,
+html.bhyt-modal-open #bhytExtFloatingRightBtn,
+html.bhyt-modal-open #bhytExtBangKeFloatingBtn,
+html.bhyt-kyso-open .bhyt-ext-floating-right-btn,
+html.bhyt-kyso-open #bhytExtFloatingRightBtn,
+html.bhyt-kyso-open #bhytExtBangKeFloatingBtn,
+body:has(.window:not([style*="display: none"]):not([style*="display:none"])) .bhyt-ext-floating-right-btn,
+body:has(.window:not([style*="display: none"]):not([style*="display:none"])) #bhytExtFloatingRightBtn,
+body:has(.window:not([style*="display: none"]):not([style*="display:none"])) #bhytExtBangKeFloatingBtn,
+body:has(.panel.window:not([style*="display: none"]):not([style*="display:none"])) .bhyt-ext-floating-right-btn,
+body:has(.panel.window:not([style*="display: none"]):not([style*="display:none"])) #bhytExtFloatingRightBtn,
+body:has(.panel.window:not([style*="display: none"]):not([style*="display:none"])) #bhytExtBangKeFloatingBtn,
+body:has([class*="kyso"]) .bhyt-ext-floating-right-btn,
+body:has([id*="kyso"]) .bhyt-ext-floating-right-btn,
+body:has([class*="smartca"]) .bhyt-ext-floating-right-btn,
+body:has([id*="smartca"]) .bhyt-ext-floating-right-btn,
+body:has([class*="chuky"]) .bhyt-ext-floating-right-btn,
+body:has([id*="chuky"]) .bhyt-ext-floating-right-btn,
+body:has([class*="casign"]) .bhyt-ext-floating-right-btn,
+body:has([id*="casign"]) .bhyt-ext-floating-right-btn,
+body:has(iframe[src*="kyso"]) .bhyt-ext-floating-right-btn,
+body:has(iframe[src*="smartca"]) .bhyt-ext-floating-right-btn,
+body:has(iframe[src*="chuky"]) .bhyt-ext-floating-right-btn,
+.window #bhytExtBangKeFloatingBtn,
+.window #bhytExtFloatingRightBtn,
+.window .bhyt-ext-floating-right-btn,
+.panel.window #bhytExtBangKeFloatingBtn,
+.panel.window #bhytExtFloatingRightBtn,
+.panel.window .bhyt-ext-floating-right-btn {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.bhyt-ext-inline-btn:hover {
+  background: linear-gradient(135deg, #0F766E 0%, #115E59 100%) !important;
+  box-shadow: 0 3px 6px rgba(13, 148, 136, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+.bhyt-ext-inline-btn:active {
+  transform: translateY(0px) !important;
+  box-shadow: 0 1px 2px rgba(13, 148, 136, 0.3) !important;
+}
+
+.bhyt-ext-inline-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke: #FFFFFF !important;
+}
+
+/* 1.1. Wrapper chứa Nút và Huy hiệu đếm số CCCD (Đặt TRÊN ô socmt) */
+.bhyt-ext-inline-wrapper {
+  margin: 0 0 6px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  clear: both !important;
+  z-index: 5 !important;
+  pointer-events: auto !important;
+}
+
+/* 1.2. Huy hiệu đếm số ký tự CCCD nhập tay nhỏ gọn (12/12) */
+.bhyt-cccd-counter {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+  height: 24px !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+}
+
+.bhyt-cccd-counter.badge-neutral {
+  background: #F1F5F9 !important;
+  color: #64748B !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+.bhyt-cccd-counter.badge-warning {
+  background: #FEF3C7 !important;
+  color: #B45309 !important;
+  border: 1px solid #F59E0B !important;
+}
+
+.bhyt-cccd-counter.badge-success {
+  background: #D1FAE5 !important;
+  color: #065F46 !important;
+  border: 1px solid #10B981 !important;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+.bhyt-cccd-counter.badge-danger {
+  background: #FEE2E2 !important;
+  color: #B91C1C !important;
+  border: 1px solid #EF4444 !important;
+}
+
+/* 1.2b. Huy hiệu đếm số ký tự Số BHYT trên form tiếp nhận (10/10 hoặc 15/15) */
+.bhyt-sobhyt-counter {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2px 6px !important;
+  margin-left: 5px !important;
+  border-radius: 4px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+  height: 24px !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+.bhyt-sobhyt-counter.badge-neutral {
+  background: #F1F5F9 !important;
+  color: #64748B !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+.bhyt-sobhyt-counter.badge-warning {
+  background: #FEF3C7 !important;
+  color: #B45309 !important;
+  border: 1px solid #F59E0B !important;
+}
+
+.bhyt-sobhyt-counter.badge-success {
+  background: #D1FAE5 !important;
+  color: #065F46 !important;
+  border: 1px solid #10B981 !important;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+.bhyt-sobhyt-counter.badge-danger {
+  background: #FEE2E2 !important;
+  color: #B91C1C !important;
+  border: 1px solid #EF4444 !important;
+}
+
+/* 1.3. Nút nổi ở giữa, cạnh phải màn hình để khi trượt trang vẫn thao tác Kiểm tra BHYT được */
+.bhyt-ext-floating-right-btn {
+  position: fixed !important;
+  right: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 2147483640 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  max-width: 180px !important;
+  overflow: hidden !important;
+  background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%) !important;
+  color: #FFFFFF !important;
+  border: 2px solid #2DD4BF !important;
+  border-right: none !important;
+  border-radius: 24px 0 0 24px !important;
+  padding: 10px 16px 10px 14px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.4px !important;
+  cursor: pointer !important;
+  box-shadow: -3px 4px 16px rgba(13, 148, 136, 0.45) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  text-transform: none !important;
+}
+
+.bhyt-ext-floating-right-btn:hover {
+  background: linear-gradient(135deg, #0F766E 0%, #115E59 100%) !important;
+  transform: translateY(-50%) translateX(-4px) !important;
+  box-shadow: -5px 6px 20px rgba(13, 148, 136, 0.6) !important;
+  border-color: #5EEAD4 !important;
+}
+
+.bhyt-ext-floating-right-btn:active {
+  background: linear-gradient(135deg, #115E59 0%, #0F766E 100%) !important;
+  transform: translateY(-50%) scale(0.96) !important;
+}
+
+.bhyt-ext-floating-right-btn svg {
+  width: 17px !important;
+  height: 17px !important;
+  stroke: #FFFFFF !important;
+  flex-shrink: 0 !important;
+}
+
+/* Nút Kiểm tra BHYT dưới ô Mã thẻ BHYT trên form Khám bệnh */
+.bhyt-ext-khambenh-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #14B8A6 !important;
+  border-radius: 6px !important;
+  padding: 5px 12px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  margin-top: 4px !important;
+  box-shadow: 0 2px 5px rgba(13, 148, 136, 0.25) !important;
+  transition: all 0.2s ease !important;
+  text-decoration: none !important;
+  user-select: none !important;
+  vertical-align: middle !important;
+}
+
+.bhyt-ext-khambenh-btn:hover {
+  background: linear-gradient(135deg, #0F766E 0%, #115E59 100%) !important;
+  box-shadow: 0 3px 8px rgba(13, 148, 136, 0.35) !important;
+  transform: translateY(-1px) !important;
+}
+
+.bhyt-ext-khambenh-btn:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+.bhyt-ext-khambenh-btn svg {
+  width: 13px !important;
+  height: 13px !important;
+  stroke: #FFFFFF !important;
+  flex-shrink: 0 !important;
+}
+
+/* 2. Nút nổi góc phải màn hình (Floating Widget) */
+.bhyt-ext-floating-widget {
+  position: fixed !important;
+  right: 18px !important;
+  bottom: 24px !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: linear-gradient(135deg, #0F766E 0%, #115E59 100%) !important;
+  color: #FFFFFF !important;
+  border: 2px solid #5EEAD4 !important;
+  border-radius: 30px !important;
+  padding: 10px 18px !important;
+  box-shadow: 0 4px 16px rgba(15, 118, 110, 0.45) !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+}
+
+.bhyt-ext-floating-widget:hover {
+  transform: scale(1.04) translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(15, 118, 110, 0.55) !important;
+  border-color: #A7F3D0 !important;
+}
+
+.bhyt-ext-floating-widget svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke: #FFFFFF !important;
+  animation: bhytPulse 2s infinite !important;
+}
+
+@keyframes bhytPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* 3. Modal Backdrop */
+.bhyt-ext-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(3px) !important;
+  z-index: 1000000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease !important;
+}
+
+.bhyt-ext-backdrop.bhyt-show {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* 4. Modal Container */
+.bhyt-ext-modal {
+  width: 520px !important;
+  max-width: 95vw !important;
+  background: #FFFFFF !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  color: #0F172A !important;
+  transform: scale(0.95);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.bhyt-ext-backdrop.bhyt-show .bhyt-ext-modal {
+  transform: scale(1) !important;
+}
+
+/* Header */
+.bhyt-ext-header {
+  background: linear-gradient(135deg, #0F766E 0%, #115E59 100%) !important;
+  color: #FFFFFF !important;
+  padding: 14px 18px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.bhyt-ext-header-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.bhyt-ext-header-title h2 {
+  margin: 0 !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #FFFFFF !important;
+  letter-spacing: 0.3px !important;
+}
+
+.bhyt-ext-header-title p {
+  margin: 2px 0 0 0 !important;
+  font-size: 11px !important;
+  opacity: 0.85 !important;
+  color: #E2E8F0 !important;
+}
+
+.bhyt-ext-close-btn {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background 0.15s !important;
+}
+
+.bhyt-ext-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Body */
+.bhyt-ext-body {
+  padding: 18px 20px !important;
+  max-height: 75vh !important;
+  overflow-y: auto !important;
+}
+
+/* Form */
+.bhyt-ext-row {
+  display: flex !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+}
+
+.bhyt-ext-col {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.bhyt-ext-col label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  margin-bottom: 4px !important;
+  color: #334155 !important;
+}
+
+.bhyt-ext-col input {
+  padding: 8px 10px !important;
+  border: 1px solid #CBD5E1 !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  color: #0F172A !important;
+  outline: none !important;
+}
+
+.bhyt-ext-col input:focus {
+  border-color: #0D9488 !important;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2) !important;
+}
+
+.bhyt-ext-btn-check {
+  width: 100% !important;
+  padding: 10px !important;
+  background: #0D9488 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  margin-top: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: background 0.2s !important;
+}
+
+.bhyt-ext-btn-check:hover {
+  background: #0F766E !important;
+}
+
+/* Loading & Error */
+.bhyt-ext-loading {
+  text-align: center !important;
+  padding: 18px !important;
+  font-size: 13px !important;
+  color: #0F766E !important;
+  font-weight: 600 !important;
+}
+
+.bhyt-ext-alert {
+  padding: 10px 14px !important;
+  border-radius: 6px !important;
+  background: #FEF2F2 !important;
+  border: 1px solid #FECACA !important;
+  color: #B91C1C !important;
+  font-size: 12.5px !important;
+  margin-top: 10px !important;
+}
+
+/* Result Box */
+.bhyt-ext-result-box {
+  margin-top: 16px !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: #F8FAFC !important;
+}
+
+.bhyt-ext-status-banner {
+  padding: 10px 14px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+}
+
+.bhyt-ext-status-banner.valid {
+  background: #ECFDF5 !important;
+  color: #065F46 !important;
+  border-bottom: 1px solid #A7F3D0 !important;
+}
+
+.bhyt-ext-status-banner.invalid {
+  background: #FEF2F2 !important;
+  color: #991B1B !important;
+  border-bottom: 1px solid #FECACA !important;
+}
+
+.bhyt-ext-result-table {
+  padding: 12px 14px !important;
+  font-size: 12.5px !important;
+}
+
+.bhyt-ext-result-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  padding: 5px 0 !important;
+  border-bottom: 1px dashed #E2E8F0 !important;
+}
+
+.bhyt-ext-result-row:last-child {
+  border-bottom: none !important;
+}
+
+.bhyt-ext-label {
+  color: #64748B !important;
+  font-weight: 500 !important;
+}
+
+.bhyt-ext-value {
+  color: #0F172A !important;
+  font-weight: 600 !important;
+}
+
+.bhyt-ext-mono {
+  font-family: Consolas, Monaco, monospace !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* Footer Actions */
+.bhyt-ext-footer-actions {
+  display: flex !important;
+  gap: 10px !important;
+  margin-top: 14px !important;
+}
+
+.bhyt-ext-btn-fill {
+  flex: 1 !important;
+  background: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 9px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+.bhyt-ext-btn-fill:hover {
+  background: #0369A1 !important;
+}
+
+.bhyt-ext-btn-copy {
+  flex: 1 !important;
+  background: #FFFFFF !important;
+  color: #334155 !important;
+  border: 1px solid #CBD5E1 !important;
+  border-radius: 6px !important;
+  padding: 9px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+.bhyt-ext-btn-copy:hover {
+  background: #F1F5F9 !important;
+}
+
+/* Toast (Đã vô hiệu hóa) */
+.bhyt-ext-toast {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 7. Banner thông báo kết quả Cổng BHXH hiển thị trên đầu Form tiếp nhận */
+.bhyt-ext-banner-result {
+  margin: 10px 0 15px 0 !important;
+  padding: 10px 16px !important;
+  border-radius: 6px !important;
+  font-family: Arial, Tahoma, sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  position: relative !important;
+  transition: all 0.3s ease !important;
+}
+
+.bhyt-ext-banner-valid {
+  background-color: #F0FDF4 !important;
+  border: 1.5px solid #22C55E !important;
+  color: #14532D !important;
+}
+
+.bhyt-ext-banner-expired {
+  background-color: #FEF2F2 !important;
+  border: 1.5px solid #EF4444 !important;
+  color: #7F1D1D !important;
+}
+
+.bhyt-ext-banner-title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  margin-bottom: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.bhyt-ext-banner-valid .bhyt-ext-banner-title {
+  color: #15803D !important;
+}
+
+.bhyt-ext-banner-expired .bhyt-ext-banner-title {
+  color: #B91C1C !important;
+}
+
+.bhyt-ext-banner-sub {
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  margin-top: 4px !important;
+  color: #0369A1 !important;
+}
+
+.bhyt-ext-banner-btn-detail {
+  display: inline-block !important;
+  margin-left: 8px !important;
+  padding: 2px 8px !important;
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 3px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+}
+
+/* 8. Tô màu xanh lá cây trường trả về chính xác kèm dấu tích đúng */
+.bhyt-ext-field-success {
+  background-color: #ddf5dd !important;
+  border: 1.5px solid #28a745 !important;
+  color: #0f5132 !important;
+  transition: all 0.3s ease !important;
+}
+
+/* BẢO TỒN ĐẶC BIỆT: Giữ nguyên 100% màu chữ xanh lá đậm của ô Số BHYT trên form tiếp nhận */
+#sobhyt,
+input[name="sobhyt"] {
+  color: green !important;
+  font-weight: bold !important;
+}
+
+/* BẢO TỒN ĐẶC BIỆT: Giữ nguyên 100% màu mặc định của HIS cho ô Số BHYT trên modal kiemtrabangke (không ép màu xanh dương) */
+#suatt_sobhyt,
+input[name="suatt_sobhyt"],
+#sua_sobhyt,
+input[name="sua_sobhyt"] {
+  color: blue !important;
+  font-weight: bold !important;
+}
+
+.bhyt-ext-tick-mark {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: 2px !important;
+  color: #16a34a !important;
+  font-weight: 900 !important;
+  font-size: 7.5px !important;
+  line-height: 1 !important;
+  user-select: none !important;
+  vertical-align: middle !important;
+}
+
+.modal .bhyt-ext-tick-mark,
+.panel.window .bhyt-ext-tick-mark,
+.ui-dialog .bhyt-ext-tick-mark,
+.window .bhyt-ext-tick-mark {
+  display: none !important;
+}
+
+/* Khung THÔNG BÁO, LỊCH SỬ KHÁM CHỮA BỆNH chuẩn VNPT HIS */
+.bhyt-ext-container {
+  margin: 10px 0 16px 0 !important;
+  font-family: Arial, Tahoma, sans-serif !important;
+}
+
+.bhyt-ext-fieldset {
+  border: 1.5px solid #0099ff !important;
+  border-radius: 6px !important;
+  padding: 10px 14px !important;
+  margin: 10px 0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 153, 255, 0.08) !important;
+}
+
+.bhyt-ext-legend {
+  color: #0099ff !important;
+  font-weight: bold !important;
+  font-size: 13px !important;
+  padding: 0 8px !important;
+  width: auto !important;
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+}
+
+.bhyt-ext-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 12px !important;
+  margin-top: 6px !important;
+}
+
+.bhyt-ext-table th {
+  background-color: #0088cc !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 6px 8px !important;
+  border: 1px solid #0077b3 !important;
+  text-align: center !important;
+}
+
+.bhyt-ext-table td {
+  padding: 6px 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+.bhyt-ext-table tr:nth-child(even) {
+  background-color: #f8fafc !important;
+}
+
+.bhyt-ext-table tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.bhyt-ext-table-pagination {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-top: 10px !important;
+  padding: 6px 2px !important;
+  font-size: 12px !important;
+  color: #475569 !important;
+  user-select: none !important;
+}
+
+.bhyt-ext-pagination-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.bhyt-ext-pagination-info {
+  color: #334155 !important;
+  font-size: 12px !important;
+  font-family: Arial, Tahoma, sans-serif !important;
+}
+
+.bhyt-ext-pagination-btns {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.bhyt-ext-page-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  padding: 0 4px !important;
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 3px !important;
+  font-weight: 600 !important;
+  font-size: 11.5px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  text-decoration: none !important;
+  user-select: none !important;
+}
+
+.bhyt-ext-page-btn:hover:not(.disabled):not(.active) {
+  background-color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+}
+
+.bhyt-ext-page-btn.active {
+  background-color: #0099ff !important;
+  color: #ffffff !important;
+  border-color: #0088ee !important;
+  cursor: default !important;
+}
+
+.bhyt-ext-page-btn.disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+.bhyt-ext-page-ellipsis {
+  padding: 0 3px !important;
+  color: #64748b !important;
+  font-weight: bold !important;
+}
+
+.bhyt-ext-page-size {
+  font-size: 11.5px !important;
+  color: #64748b !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.bhyt-ext-page-size-box {
+  padding: 2px 8px !important;
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 3px !important;
+  font-weight: bold !important;
+  color: #0f172a !important;
+}
+
+/* ==========================================================
+   CỤM 2 BUTTON Ở GIỮA: "LỊCH SỬ KCB" & "LỊCH SỬ KIỂM TRA THẺ"
+   ========================================================== */
+.bhyt-ext-actions-center {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 16px !important;
+  margin-top: 12px !important;
+  padding-top: 6px !important;
+}
+
+.bhyt-btn-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: linear-gradient(180deg, #0099ff 0%, #0077cc 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #0066b3 !important;
+  border-radius: 5px !important;
+  padding: 6px 18px !important;
+  font-family: Arial, Tahoma, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.4px !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 5px rgba(0, 119, 204, 0.25) !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+  outline: none !important;
+}
+
+.bhyt-btn-toggle:hover {
+  background: linear-gradient(180deg, #1aa3ff 0%, #0088ee 100%) !important;
+  box-shadow: 0 4px 10px rgba(0, 119, 204, 0.35) !important;
+  transform: translateY(-1px) !important;
+}
+
+.bhyt-btn-toggle:active,
+.bhyt-btn-toggle.active {
+  background: linear-gradient(180deg, #005fa3 0%, #004480 100%) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+  border-color: #003366 !important;
+  transform: translateY(0) !important;
+}
+
+.bhyt-btn-toggle svg {
+  width: 15px !important;
+  height: 15px !important;
+  stroke: #ffffff !important;
+}
+
+.bhyt-btn-toggle * {
+  pointer-events: none !important;
+}
+
+.bhyt-btn-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 1px 7px !important;
+  border-radius: 12px !important;
+  margin-left: 2px !important;
+  line-height: 1.2 !important;
+}
+
+/* Màu đỏ nổi bật cho số lượt Lịch sử KCB theo yêu cầu người dùng */
+.bhyt-ext-kcb-count,
+.bhyt-kcb-count-red,
+#btnToggleLskcb .bhyt-btn-badge,
+.bhyt-btn-badge-kcb {
+  color: #dc2626 !important;
+  font-weight: 800 !important;
+}
+
+#btnToggleLskcb .bhyt-btn-badge,
+.bhyt-btn-badge-kcb {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border: 1px solid #fca5a5 !important;
+}
+
+#btnToggleLskcb.active .bhyt-btn-badge {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+#bhytExtBoxKcb.is-active,
+#bhytExtBoxKt.is-active {
+  display: block !important;
+}
+
+/* ==========================================================
+   CSS CHO TRANG BẢNG KÊ & MODAL CẬP NHẬT HÀNH CHÍNH (suathongtin_modal)
+   ========================================================== */
+
+/* Nút Kiểm tra BHYT trong Modal & Form Khám bệnh nội trú đồng bộ */
+.bhyt-btn-modal-check,
+#btnKhamBenhNoiTruCheckBHYT {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #115E59 !important;
+  border-radius: 4px !important;
+  padding: 4px 10px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: normal !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+  margin: 0 !important;
+  vertical-align: middle !important;
+  height: 26px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+  opacity: 1 !important;
+  filter: none !important;
+  pointer-events: auto !important;
+  width: auto !important;
+  min-width: 118px !important;
+  max-width: none !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25) !important;
+}
+
+.bhyt-btn-modal-check:hover,
+#btnKhamBenhNoiTruCheckBHYT:hover {
+  background: linear-gradient(135deg, #0F766E 0%, #115E59 100%) !important;
+  box-shadow: 0 2px 6px rgba(13, 148, 136, 0.35) !important;
+  color: #FFFFFF !important;
+  opacity: 1 !important;
+}
+
+.bhyt-btn-modal-check:disabled,
+#btnKhamBenhNoiTruCheckBHYT:disabled {
+  opacity: 1 !important;
+  filter: none !important;
+  color: #FFFFFF !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+
+#bhyt_noitru_btn_wrapper {
+  display: block !important;
+  margin-top: 3px !important;
+  margin-bottom: 2px !important;
+  clear: both !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  width: max-content !important;
+  min-width: 118px !important;
+  max-width: none !important;
+  position: relative !important;
+  z-index: 100 !important;
+  opacity: 1 !important;
+}
+
+.bhyt-modal-msg-box {
+  margin: 4px 0 !important;
+  clear: both !important;
+}
+
+#bhyt_modal_msg_row td {
+  padding: 4px 6px !important;
+  vertical-align: middle !important;
+}
+
+#bhyt_modal_msg_row .bhyt-ext-thongbao-wrapper {
+  margin: 2px 0 4px 0 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+.bhyt-modal-alert {
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  animation: bhytFadeIn 0.2s ease-out !important;
+}
+
+.bhyt-modal-alert-success {
+  background: #ECFDF5 !important;
+  border: 1px solid #10B981 !important;
+  color: #065F46 !important;
+}
+
+.bhyt-modal-alert-warning {
+  background: #FFFBEB !important;
+  border: 1px solid #F59E0B !important;
+  color: #B45309 !important;
+}
+
+.bhyt-modal-alert-danger {
+  background: #FEF2F2 !important;
+  border: 1px solid #EF4444 !important;
+  color: #991B1B !important;
+}
+
+.bhyt-modal-alert-info {
+  background: #EFF6FF !important;
+  border: 1px solid #3B82F6 !important;
+  color: #1E40AF !important;
+}
+
+/* Toast thông báo nhanh (Đã vô hiệu hóa hoàn toàn) */
+.bhyt-toast-notification,
+#bhytToastNotification {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Modal Popup Kết quả kiểm tra BHYT trên trang Bảng kê */
+.bhyt-bangke-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(2px) !important;
+  z-index: 2147483645 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  animation: bhytFadeIn 0.2s ease-out !important;
+}
+
+.bhyt-bangke-modal-card {
+  width: 620px !important;
+  max-width: 95vw !important;
+  max-height: 90vh !important;
+  background: #FFFFFF !important;
+  border-radius: 12px !important;
+  border: 1px solid #CBD5E1 !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  animation: bhytModalScale 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes bhytModalScale {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.bhyt-bkmodal-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 18px !important;
+  background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%) !important;
+  color: #FFFFFF !important;
+}
+
+.bhyt-bkmodal-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+}
+
+.bhyt-bkmodal-title svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke: #5EEAD4 !important;
+}
+
+.bhyt-bkmodal-close {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  font-size: 16px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+}
+
+.bhyt-bkmodal-close:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+  transform: scale(1.1) !important;
+}
+
+.bhyt-bkmodal-body {
+  padding: 16px 20px !important;
+  overflow-y: auto !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.bhyt-bkmodal-status-badge {
+  padding: 10px 14px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+}
+
+.bhyt-bkmodal-status-badge.status-valid {
+  background: #ECFDF5 !important;
+  border: 1px solid #10B981 !important;
+  color: #065F46 !important;
+}
+
+.bhyt-bkmodal-status-badge.status-warning {
+  background: #FFFBEB !important;
+  border: 1px solid #F59E0B !important;
+  color: #92400E !important;
+}
+
+.bhyt-bkmodal-status-badge.status-error {
+  background: #FEF2F2 !important;
+  border: 1px solid #EF4444 !important;
+  color: #991B1B !important;
+}
+
+.bhyt-bkmodal-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 13px !important;
+}
+
+.bhyt-bkmodal-table tr {
+  border-bottom: 1px solid #F1F5F9 !important;
+}
+
+.bhyt-bkmodal-table td {
+  padding: 7px 6px !important;
+  vertical-align: top !important;
+}
+
+.bhyt-bkmodal-label {
+  font-weight: 600 !important;
+  color: #64748B !important;
+  width: 145px !important;
+  white-space: nowrap !important;
+}
+
+.bhyt-bkmodal-value {
+  font-weight: 600 !important;
+  color: #0F172A !important;
+}
+
+.bhyt-bkmodal-highlight {
+  color: #0D9488 !important;
+  font-weight: 700 !important;
+}
+
+.bhyt-bkmodal-footer {
+  padding: 10px 18px !important;
+  background: #F8FAFC !important;
+  border-top: 1px solid #E2E8F0 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+}
+
+.bhyt-bkmodal-btn {
+  padding: 6px 14px !important;
+  border-radius: 6px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  border: 1px solid transparent !important;
+  transition: all 0.15s ease !important;
+}
+
+.bhyt-bkmodal-btn-secondary {
+  background: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+.bhyt-bkmodal-btn-secondary:hover {
+  background: #F1F5F9 !important;
+  border-color: #94A3B8 !important;
+}
+
+.bhyt-bkmodal-btn-primary {
+  background: #0D9488 !important;
+  color: #FFFFFF !important;
+}
+
+.bhyt-bkmodal-btn-primary:hover {
+  background: #0F766E !important;
+}
+
+/* 11. CẢNH BÁO VÀ NÚT LẤY THẺ BHYT MỚI KHI KIỂM TRA HẠN THẺ & NGÀY VÀO ĐỢT ĐIỀU TRỊ */
+.bhyt-warning-dotdieutri {
+  margin: 10px 0 !important;
+  padding: 12px 16px !important;
+  background: #FFFBEB !important;
+  border: 1.5px solid #F59E0B !important;
+  border-left: 5px solid #D97706 !important;
+  border-radius: 6px !important;
+  color: #78350F !important;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15) !important;
+}
+
+.bhyt-warning-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #B45309 !important;
+  margin-bottom: 8px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.2px !important;
+}
+
+.bhyt-warning-header svg {
+  stroke: #D97706 !important;
+  flex-shrink: 0 !important;
+}
+
+.bhyt-warning-body {
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  color: #78350F !important;
+}
+
+.bhyt-warning-item {
+  margin: 3px 0 !important;
+}
+
+.bhyt-warning-hint {
+  margin-top: 8px !important;
+  padding-top: 6px !important;
+  border-top: 1px dashed #FCD34D !important;
+  font-size: 12.5px !important;
+  color: #92400E !important;
+}
+
+.bhyt-warning-action {
+  margin-top: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.bhyt-success-dotdieutri {
+  margin: 10px 0 !important;
+  padding: 10px 14px !important;
+  background: #ECFDF5 !important;
+  border: 1.5px solid #10B981 !important;
+  border-left: 5px solid #059669 !important;
+  border-radius: 6px !important;
+  color: #065F46 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+.bhyt-success-body {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.bhyt-success-body svg {
+  stroke: #059669 !important;
+  flex-shrink: 0 !important;
+}
+
+.bhyt-btn-apply-new-card {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #B45309 !important;
+  border-radius: 5px !important;
+  padding: 7px 16px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 4px rgba(217, 119, 6, 0.3) !important;
+  transition: all 0.2s ease !important;
+  white-space: nowrap !important;
+}
+
+.bhyt-btn-apply-new-card:hover {
+  background: linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 6px rgba(217, 119, 6, 0.4) !important;
+}
+
+.bhyt-success-dotdieutri .bhyt-btn-apply-new-card {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  border-color: #047857 !important;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.3) !important;
+}
+
+.bhyt-success-dotdieutri .bhyt-btn-apply-new-card:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  box-shadow: 0 3px 6px rgba(5, 150, 105, 0.4) !important;
+}
+
+.bhyt-btn-apply-new-card.applied {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  cursor: default !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.bhyt-val-highlight-red {
+  color: #DC2626 !important;
+  font-weight: 700 !important;
+}
+
+.bhyt-val-highlight-blue {
+  color: #0070C0 !important;
+  font-weight: 700 !important;
+}
+
+.bhyt-val-highlight-green {
+  color: #166534 !important;
+  font-weight: 700 !important;
+}
+
+/* Nút Kiểm tra BHYT trên trang Bảng kê đặt cạnh nút Xem thông tin */
+.bhyt-bangke-btn-group {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+}
+
+.bhyt-btn-bangke-inline,
+.bhyt-btn-khambenh-check,
+.bhyt-btn-bangke-card-check,
+.bhyt-btn-modal-check,
+.bhyt-btn-bant-check {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #115E59 !important;
+  border-radius: 3px !important;
+  padding: 2px 10px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  height: 24px !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.bhyt-btn-bangke-inline:hover,
+.bhyt-btn-khambenh-check:hover,
+.bhyt-btn-bangke-card-check:hover,
+.bhyt-btn-modal-check:hover,
+.bhyt-btn-bant-check:hover {
+  background: linear-gradient(135deg, #0F766E 0%, #115E59 100%) !important;
+  border-color: #134E4A !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+}
+
+.bhyt-btn-bangke-inline:active,
+.bhyt-btn-khambenh-check:active,
+.bhyt-btn-bangke-card-check:active,
+.bhyt-btn-modal-check:active,
+.bhyt-btn-bant-check:active {
+  transform: translateY(1px) !important;
+}
+
+/* Hiển thị thông báo trên trang Bảng kê vừa vặn 100% chiều ngang form */
+#bhyt_bangke_inline_tr {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+#bhyt_bangke_inline_tr > td {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 2px 4px !important;
+  overflow: hidden !important;
+}
+
+#bhyt_bangke_inline_result {
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  margin: 4px 0 6px 0 !important;
+  padding: 0 !important;
+  clear: both !important;
+  display: block !important;
+  max-width: 100% !important;
+}
+
+#bhyt_bangke_inline_result .bhyt-ext-fieldset {
+  position: relative !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 6px 12px !important;
+  overflow: hidden !important;
+}
+
+.bhyt-btn-close-notice {
+  transition: all 0.15s ease !important;
+  opacity: 0.7 !important;
+}
+.bhyt-btn-close-notice:hover {
+  opacity: 1 !important;
+  color: #dc2626 !important;
+  transform: scale(1.15) !important;
+}
+
+#bhyt_bangke_inline_result .bhyt-ext-thongbao-wrapper {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#bhyt_bangke_inline_result .bhyt-notification-text {
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+  line-height: 1.55 !important;
+}
+
+#bhyt_bangke_inline_result .bhyt-ext-discrepancy-card {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 6px 0 !important;
+  padding: 6px 10px !important;
+  overflow: hidden !important;
+}
+
+#bhyt_bangke_inline_result .bhyt-discrepancy-table {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  box-sizing: border-box !important;
+  border-collapse: collapse !important;
+  overflow: hidden !important;
+}
+
+#bhyt_bangke_inline_result .bhyt-card-detail-line {
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+.bhyt-status-line {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  font-weight: 800 !important;
+  font-size: 14.5px !important;
+  line-height: 1.35 !important;
+  border-radius: 6px !important;
+  padding: 4px 11px !important;
+  margin-bottom: 6px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  letter-spacing: 0.1px !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  flex-wrap: wrap !important;
+  word-break: break-word !important;
+}
+
+.bhyt-status-line.bhyt-status-success {
+  background: #ecfdf5 !important;
+  border: 1.5px solid #86efac !important;
+  color: #15803d !important;
+}
+
+.bhyt-status-line.bhyt-status-danger {
+  background: #fef2f2 !important;
+  border: 1.5px solid #fca5a5 !important;
+  color: #b91c1c !important;
+}
+
+.bhyt-status-line.bhyt-status-warning {
+  background: #fffbeb !important;
+  border: 1.5px solid #fcd34d !important;
+  color: #b45309 !important;
+}
+
+.bhyt-status-line.bhyt-status-info {
+  background: #eff6ff !important;
+  border: 1.5px solid #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+.bhyt-card-detail-line {
+  font-size: 13.5px !important;
+  line-height: 1.6 !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  white-space: normal !important;
+}
+
+/* Khung hiển thị thông báo trên cùng của form khám bệnh */
+.bhyt-khambenh-top-result {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 4px 0 8px 0 !important;
+  clear: both !important;
+}
+
+.bhyt-khambenh-top-result .bhyt-ext-fieldset {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 6px 12px !important;
+  margin: 2px 0 !important;
+}
+
+/* Hiển thị rõ ràng màu xanh lá và dấu tick khi đổ dữ liệu vào các trường trong modal */
+.bhyt-modal-field-filled,
+.bhyt-ext-field-success,
+.bhyt-modal-field-filled .textbox-text,
+.bhyt-ext-field-success .textbox-text,
+.bhyt-modal-field-filled input,
+.bhyt-ext-field-success input,
+.bhyt-modal-field-filled select,
+.bhyt-ext-field-success select,
+.bhyt-modal-field-filled .combo,
+.bhyt-ext-field-success .combo,
+.bhyt-modal-field-filled .combo-text,
+.bhyt-ext-field-success .combo-text {
+  background-color: #ddf5dd !important;
+  border-color: #28a745 !important;
+  font-weight: 600 !important;
+}
+
+.bhyt-modal-field-filled.textbox,
+.bhyt-ext-field-success.textbox,
+.bhyt-modal-field-filled.combo,
+.bhyt-ext-field-success.combo {
+  border: 1.5px solid #28a745 !important;
+}
+
+/* Đảm bảo ô Ngày đủ 5 năm liên tục luôn hiển thị xanh lá rõ ràng */
+#thoigian_du5namlientuc.bhyt-ext-field-success,
+input[name="thoigian_du5namlientuc"].bhyt-ext-field-success,
+#thoigian_du5namlientuc.bhyt-ext-field-success:disabled,
+#thoigian_du5namlientuc.bhyt-ext-field-success[readonly],
+input[name="thoigian_du5namlientuc"].bhyt-ext-field-success:disabled,
+input[name="thoigian_du5namlientuc"].bhyt-ext-field-success[readonly] {
+  background-color: #ddf5dd !important;
+  background: #ddf5dd !important;
+  border: 1.5px solid #28a745 !important;
+  color: #0f5132 !important;
+  -webkit-text-fill-color: #0f5132 !important;
+  font-weight: 600 !important;
+}
+
+/* Wrapper nút Kiểm tra BHYT hiển thị ngay DƯỚI ô Mã thẻ BHYT / Số BHYT */
+.bhyt-modal-btn-wrapper,
+.bhyt-khambenh-btn-wrapper {
+  display: block !important;
+  clear: both !important;
+  margin: 4px 0 6px 0 !important;
+  position: relative !important;
+  z-index: 5 !important;
+  overflow: visible !important;
+}
+
+/* Đảm bảo popup context menu trên lưới Bảng kê (#gridMenu) hiển thị rõ ràng, không can thiệp các menu chung của HIS */
+#gridMenu.menu,
+#mm.menu,
+#mm1.menu,
+#mm2.menu,
+#mm3.menu {
+  z-index: 99999 !important;
+}
+
+.combo-p,
+.panel.combo-p {
+  z-index: 2147483647 !important;
+}
+
+/* Đảm bảo form / modal Ký số (SmartCA / VNPT-CA / Ký số Cán bộ y tế) giữ nguyên 100% layout chuẩn của HIS, không can thiệp độ rộng, toolbar hay header */
+
+/* 1.3. Nút Sửa CCCD thiết kế chuẩn giao diện HIS chuyên nghiệp: nút xanh dương, icon bút chì, cân đối với ô socmt */
+#sua_CCCD,
+button#sua_CCCD,
+.bhyt-btn-sua-cccd,
+input[name="sua_CCCD"].bhyt-btn-sua-cccd {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 22px !important;
+  max-height: 22px !important;
+  line-height: 20px !important;
+  margin: 0 3px 0 4px !important;
+  padding: 0 7px !important;
+  background: #0d6efd !important;
+  background-image: linear-gradient(180deg, #1877f2 0%, #0d6efd 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #0b5ed7 !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 2px rgba(13, 110, 253, 0.2) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  transition: all 0.15s ease-in-out !important;
+  outline: none !important;
+  user-select: none !important;
+}
+
+#sua_CCCD:hover,
+button#sua_CCCD:hover,
+.bhyt-btn-sua-cccd:hover {
+  background: #0b5ed7 !important;
+  background-image: linear-gradient(180deg, #0d6efd 0%, #0b5ed7 100%) !important;
+  border-color: #0a58ca !important;
+  box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3) !important;
+  transform: translateY(-0.5px) !important;
+}
+
+#sua_CCCD:active,
+button#sua_CCCD:active,
+.bhyt-btn-sua-cccd:active {
+  background: #0a58ca !important;
+  border-color: #0a53be !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  transform: scale(0.98) !important;
+}
+
+#sua_CCCD.is-processing,
+button#sua_CCCD.is-processing,
+.bhyt-btn-sua-cccd.is-processing {
+  background: #64748b !important;
+  background-image: none !important;
+  border-color: #475569 !important;
+  cursor: wait !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 0.85 !important;
+}
+
+.bhyt-btn-icon-pencil {
+  display: inline-block !important;
+  width: 11px !important;
+  height: 11px !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
+  fill: currentColor !important;
+}
+
+.bhyt-btn-sua-text {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  font-size: 11px !important;
+  line-height: 20px !important;
+  letter-spacing: 0.1px !important;
+  white-space: nowrap !important;
+}
+
+/* 1.4. Nút Xuất DS Tiếp nhận trên tab Danh sách tiếp nhận: đặt ngay sau ô Đến ngày (#dsdenngay) */
+#bhytBtnXuatDsTiepNhan,
+button#bhytBtnXuatDsTiepNhan,
+.bhyt-btn-xuat-ds-tiepnhan {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  vertical-align: middle !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  line-height: 28px !important;
+  margin: 0 0 0 6px !important;
+  padding: 0 14px !important;
+  background: #16834A !important;
+  background-color: #16834A !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  outline: none !important;
+  user-select: none !important;
+  position: static !important;
+  float: none !important;
+  clear: none !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+  text-shadow: none !important;
+}
+
+#bhytBtnXuatDsTiepNhan:hover,
+button#bhytBtnXuatDsTiepNhan:hover,
+.bhyt-btn-xuat-ds-tiepnhan:hover {
+  background: #137340 !important;
+  background-color: #137340 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+#bhytBtnXuatDsTiepNhan:active,
+button#bhytBtnXuatDsTiepNhan:active,
+.bhyt-btn-xuat-ds-tiepnhan:active {
+  background: #0f5c33 !important;
+  background-color: #0f5c33 !important;
+  border: none !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+#bhytBtnXuatDsTiepNhan:disabled,
+#bhytBtnXuatDsTiepNhan.is-processing,
+button#bhytBtnXuatDsTiepNhan.is-processing,
+.bhyt-btn-xuat-ds-tiepnhan.is-processing {
+  background: #64748b !important;
+  background-color: #64748b !important;
+  background-image: none !important;
+  border: none !important;
+  cursor: wait !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 0.9 !important;
+}
+
+#bhytBtnXuatDsTiepNhan svg,
+.bhyt-btn-xuat-ds-tiepnhan svg {
+  width: 14px !important;
+  height: 14px !important;
+  flex-shrink: 0 !important;
+  pointer-events: none !important;
+}
+
+#bhytBtnXuatDsTiepNhan span,
+.bhyt-btn-xuat-ds-tiepnhan span {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  -webkit-font-smoothing: antialiased !important;
+  text-shadow: none !important;
+}
+
+/* ==========================================================
+   HỘP THOẠI XÁC NHẬN & CẬP NHẬT SỐ CCCD/CMT CHUYÊN NGHIỆP
+   ========================================================== */
+.bhyt-sua-cccd-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(15, 23, 42, 0.5) !important;
+  backdrop-filter: blur(2px) !important;
+  z-index: 9999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: bhytFadeIn 0.15s ease-out !important;
+}
+
+.bhyt-sua-cccd-dialog {
+  background: #ffffff !important;
+  width: 440px !important;
+  max-width: 92vw !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25), 0 4px 10px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid #cbd5e1 !important;
+  overflow: hidden !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  color: #1e293b !important;
+  animation: bhytScaleIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.bhyt-sua-cccd-header {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 10px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.bhyt-sua-cccd-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #0d6efd !important;
+}
+
+.bhyt-sua-cccd-btn-close {
+  background: transparent !important;
+  border: none !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  color: #64748b !important;
+  cursor: pointer !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  transition: all 0.15s ease !important;
+}
+
+.bhyt-sua-cccd-btn-close:hover {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+.bhyt-sua-cccd-body {
+  padding: 14px !important;
+}
+
+.bhyt-sua-cccd-info {
+  background: #f1f5f9 !important;
+  border-left: 4px solid #0d6efd !important;
+  padding: 8px 12px !important;
+  border-radius: 0 4px 4px 0 !important;
+  margin-bottom: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.bhyt-sua-cccd-label {
+  font-size: 12.5px !important;
+  color: #475569 !important;
+}
+
+.bhyt-sua-cccd-current {
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  letter-spacing: 0.5px !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+.bhyt-sua-cccd-field label {
+  display: block !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  margin-bottom: 6px !important;
+}
+
+.bhyt-sua-cccd-input-wrap {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.bhyt-sua-cccd-input {
+  width: 100% !important;
+  height: 36px !important;
+  padding: 0 48px 0 10px !important;
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
+  letter-spacing: 1px !important;
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  outline: none !important;
+  transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+.bhyt-sua-cccd-input:focus {
+  border-color: #0d6efd !important;
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2) !important;
+}
+
+.bhyt-sua-cccd-input.is-invalid {
+  border-color: #ef4444 !important;
+  background: #fef2f2 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+.bhyt-sua-cccd-counter {
+  position: absolute !important;
+  right: 10px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+.bhyt-sua-cccd-msg {
+  margin-top: 8px !important;
+  font-size: 11.5px !important;
+  line-height: 1.4 !important;
+  color: #64748b !important;
+  transition: color 0.15s ease !important;
+}
+
+.bhyt-sua-cccd-msg.is-error {
+  color: #dc2626 !important;
+  font-weight: 600 !important;
+}
+
+.bhyt-sua-cccd-footer {
+  background: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+  padding: 10px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+.bhyt-sua-cccd-btn-cancel {
+  height: 30px !important;
+  padding: 0 14px !important;
+  background: #ffffff !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.bhyt-sua-cccd-btn-cancel:hover {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+  border-color: #94a3b8 !important;
+}
+
+.bhyt-sua-cccd-btn-confirm {
+  height: 30px !important;
+  padding: 0 16px !important;
+  background: #0d6efd !important;
+  color: #ffffff !important;
+  border: 1px solid #0d6efd !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 2px rgba(13, 110, 253, 0.25) !important;
+}
+
+.bhyt-sua-cccd-btn-confirm:hover {
+  background: #0b5ed7 !important;
+  border-color: #0a58ca !important;
+  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.35) !important;
+  transform: translateY(-0.5px) !important;
+}
+
+.bhyt-sua-cccd-btn-confirm:disabled,
+.bhyt-sua-cccd-btn-confirm.is-processing {
+  background: #64748b !important;
+  border-color: #475569 !important;
+  cursor: wait !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Toast thông báo cập nhật thành công */
+.bhyt-toast-notice {
+  position: fixed !important;
+  top: 24px !important;
+  right: 24px !important;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  padding: 10px 16px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  z-index: 99999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  animation: bhytSlideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes bhytFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bhytScaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bhytSlideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes bhytSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.bhyt-khambenh-top-result,
+#bhyt_khambenh_top_result {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* ==========================================================
+   CẢNH BÁO LỖI SAI LỆCH THÔNG TIN TRÊN HIS SO VỚI CỔNG BHXH
+   ========================================================== */
+/* Giữ nguyên 100% màu sắc mặc định của HIS khi có sai lệch */
+.bhyt-ext-field-mismatch {
+  /* Không thay đổi màu sắc của HIS */
+}
+
+.bhyt-ext-mismatch-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #dc2626 !important;
+  font-weight: 800 !important;
+  font-size: 10px !important;
+  margin-left: 3px !important;
+  background: #fee2e2 !important;
+  border: 1px solid #f87171 !important;
+  border-radius: 3px !important;
+  padding: 1px 4px !important;
+  vertical-align: middle !important;
+  line-height: 1.2 !important;
+  cursor: help !important;
+  user-select: none !important;
+}
+
+.bhyt-ext-discrepancy-card {
+  margin: 8px 0 !important;
+  padding: 8px 10px !important;
+  background: #fff5f5 !important;
+  border: 1.5px solid #ef4444 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.12) !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.bhyt-discrepancy-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  box-sizing: border-box !important;
+  border-collapse: collapse !important;
+  word-break: break-word !important;
+}
+
+.bhyt-discrepancy-table th,
+.bhyt-discrepancy-table td {
+  box-sizing: border-box !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* =========================================================================
+   NÚT HÀNH ĐỘNG NỘI TRÚ (CHUYỂN DƯỢC, CHUYỂN BH, CHUYỂN KBH) TRONG FORM KHÁM BỆNH NỘI TRÚ
+   Đặt ngay bên dưới text "Đa tuyến nội tỉnhĐa tuyến ngoại tỉnh"
+   ========================================================================= */
+#bhyt_ext_noitru_btn_group {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+  padding: 4px 2px !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  clear: both !important;
+  width: 100% !important;
+  max-width: 330px !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+.bhyt-noitru-action-btn {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  height: 24px !important;
+  line-height: 22px !important;
+  padding: 0 10px !important;
+  margin-right: 6px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  font-family: Arial, Tahoma, sans-serif !important;
+  color: #000000 !important;
+  background: linear-gradient(to bottom, #ffffff 0%, #eeeeee 100%) !important;
+  border: 1px solid #b5b5b5 !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: all 0.12s ease !important;
+}
+
+.bhyt-noitru-action-btn:hover {
+  background: linear-gradient(to bottom, #f5f5f5 0%, #dddddd 100%) !important;
+  border-color: #888888 !important;
+  color: #003399 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18) !important;
+}
+
+.bhyt-noitru-action-btn:active {
+  background: #e0e0e0 !important;
+  transform: translateY(1px) !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.bhyt-noitru-action-btn:disabled,
+.bhyt-noitru-action-btn.disabled {
+  background: #f0f0f0 !important;
+  border-color: #d8d8d8 !important;
+  color: #a0a0a0 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  opacity: 0.65 !important;
+}
+
+/* Nút Chuyển Dược: Phong cách chuẩn HIS */
+#bhyt_btn_chuyen_duoc_ext {
+  /* Đồng bộ chuẩn nút Chuyển Dược trên kiemtrabangkenoitru */
+}
+
+/* Nút Chuyển BHYT / Chuyển BH */
+#bhyt_btn_chuyen_bh_ext,
+#bhyt_btn_chuyen_bhyt_ext {
+  /* Đồng bộ chuẩn nút Chuyển BH trên kiemtrabangkenoitru */
+}
+
+/* Nút Chuyển KBHYT / Chuyển KBH */
+#bhyt_btn_chuyen_kbh_ext,
+#bhyt_btn_chuyen_kbhyt_ext {
+  /* Đồng bộ chuẩn nút Chuyển KBH trên kiemtrabangkenoitru */
+}
+
+/* Khung chứa nút Kiểm tra BHYT nội trú dưới ô nhập BHYT */
+#bhyt_noitru_btn_wrapper {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  margin-top: 3px !important;
+  margin-bottom: 2px !important;
+  clear: both !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  width: max-content !important;
+  min-width: 110px !important;
+  max-width: none !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+#btnKhamBenhNoiTruCheckBHYT {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: auto !important;
+  margin: 0 !important;
+  height: 24px !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  border-radius: 3px !important;
+  background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #115E59 !important;
+  padding: 2px 10px !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12) !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+#btnKhamBenhNoiTruCheckBHYT:hover {
+  background: linear-gradient(135deg, #0F766E 0%, #115E59 100%) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+}
+
+/* Ẩn hoàn toàn container cũ ở panel bên trái */
+#bhyt_noitru_btn_container {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* =========================================================================
+   GIAO DIỆN NÚT VÀ POPOVER XUẤT XML TRÊN FORM XUẤT DS GIẤY CHỨNG TỪ (xuatdsgiaychungtu)
+   ========================================================================= */
+.bhyt-xml-chungtu-wrapper {
+  position: absolute !important;
+  display: inline-block !important;
+  z-index: 1000 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.bhyt-btn-xuat-xml-chungtu {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #065f46 !important;
+  border-radius: 4px !important;
+  padding: 5px 14px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  font-family: inherit !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.2s ease !important;
+  line-height: 1.4 !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+}
+
+.bhyt-btn-xuat-xml-chungtu:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-1px) !important;
+  color: #ffffff !important;
+}
+
+.bhyt-btn-xuat-xml-chungtu:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+}
+
+.bhyt-xml-popover {
+  position: absolute !important;
+  top: calc(100% + 5px) !important;
+  right: 0 !important;
+  min-width: 320px !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  z-index: 10000 !important;
+  overflow: hidden !important;
+  text-align: left !important;
+  font-family: inherit !important;
+  animation: bhytPopoverFadeIn 0.18s ease-out !important;
+}
+
+@keyframes bhytPopoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bhyt-xml-popover-header {
+  background: #f1f5f9 !important;
+  padding: 8px 14px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #475569 !important;
+  letter-spacing: 0.5px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  text-transform: uppercase !important;
+}
+
+.bhyt-xml-popover-item {
+  display: flex !important;
+  align-items: flex-start !important;
+  padding: 10px 14px !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.bhyt-xml-popover-item:last-child {
+  border-bottom: none !important;
+}
+
+.bhyt-xml-popover-item:hover {
+  background: #f8fafc !important;
+}
+
+.bhyt-xml-popover-icon {
+  font-size: 18px !important;
+  margin-right: 12px !important;
+  line-height: 1.2 !important;
+  flex-shrink: 0 !important;
+  padding-top: 1px !important;
+}
+
+.bhyt-xml-popover-content {
+  flex: 1 !important;
+}
+
+.bhyt-xml-popover-item-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
+  margin-bottom: 3px !important;
+  line-height: 1.3 !important;
+}
+
+.bhyt-xml-popover-item:hover .bhyt-xml-popover-item-title {
+  color: #059669 !important;
+}
+
+.bhyt-xml-popover-item-desc {
+  font-size: 11.5px !important;
+  color: #64748b !important;
+  line-height: 1.4 !important;
+}
+
+/* Toast thông báo xuất XML */
+.bhyt-xml-toast {
+  position: fixed !important;
+  top: 24px !important;
+  right: 24px !important;
+  background: #1e293b !important;
+  color: #ffffff !important;
+  padding: 12px 20px !important;
+  border-radius: 8px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  z-index: 999999 !important;
+  display: none !important;
+  align-items: center !important;
+  transition: all 0.25s ease !important;
+  border-left: 4px solid #3b82f6 !important;
+  font-family: inherit !important;
+}
+
+.bhyt-xml-toast-show {
+  display: flex !important;
+  animation: bhytToastSlideIn 0.3s ease !important;
+}
+
+@keyframes bhytToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.bhyt-xml-toast-success {
+  border-left-color: #10b981 !important;
+}
+
+.bhyt-xml-toast-error {
+  border-left-color: #ef4444 !important;
+}
+
+.bhyt-xml-toast-warning {
+  border-left-color: #f59e0b !important;
+}
+
+

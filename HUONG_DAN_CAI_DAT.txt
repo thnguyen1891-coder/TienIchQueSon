@@ -1,0 +1,78 @@
+================================================================================
+HƯỚNG DẪN CÀI ĐẶT - TIỆN ÍCH THÔNG MINH - TTYTKV QUẾ SƠN
+Phiên bản: 2.3.0 (có TỰ ĐỘNG CẬP NHẬT - xem BƯỚC 5)
+Hoạt động độc lập 100% trên trình duyệt (Không cần cài đặt Backend Server)
+================================================================================
+
+BƯỚC 1: GIẢI NÉN
+--------------------------------------------------------------------------------
+1. Sao chép file zip này sang máy tính cần cài đặt.
+2. Nhấp chuột phải vào file .zip -> Chọn "Extract All..." (hoặc "Giải nén tại đây").
+3. Lưu ý vị trí thư mục vừa giải nén (Ví dụ: D:\TIEN-ICH-BHYT hoặc C:\KiemTraTheBHYT).
+   *LƯU Ý: Không xóa hoặc di chuyển thư mục này sau khi cài đặt.
+
+
+BƯỚC 2: CÀI ĐẶT VÀO TRÌNH DUYỆT (CHROME / COC COC / EDGE)
+--------------------------------------------------------------------------------
+1. Mở trình duyệt Chrome (hoặc Cốc Cốc, Microsoft Edge).
+2. Nhập vào thanh địa chỉ:
+   - Trên Chrome / Cốc Cốc: chrome://extensions
+   - Trên Microsoft Edge: edge://extensions
+   và nhấn Enter.
+
+3. Ở góc trên cùng bên phải màn hình, BẬT công tắc:
+   "Chế độ dành cho nhà phát triển" (Developer mode).
+
+4. Nhìn sang góc trên cùng bên trái, bấm nút:
+   "Tải tiện ích đã giải nén" (Load unpacked).
+
+5. Chọn đúng thư mục tiện ích vừa giải nén ở Bước 1 (thư mục chứa file manifest.json).
+6. Bấm "Select Folder" (Chọn thư mục).
+   -> Tiện ích "Kiểm Tra Thẻ BHYT - TTYTKV Quế Sơn" sẽ xuất hiện trên danh sách!
+
+
+BƯỚC 3: GHIM VÀ CẤU HÌNH TÀI KHOẢN BHXH (CHỈ CẦN LÀM 1 LẦN)
+--------------------------------------------------------------------------------
+1. Bấm vào biểu tượng Mảnh ghép (Extensions) ở góc trên bên phải thanh công cụ trình duyệt.
+2. Bấm vào biểu tượng Ghim (Pin) cạnh tên tiện ích để icon hiển thị thường trực.
+3. Bấm trực tiếp vào icon tiện ích để mở bảng Cấu hình:
+   - Nhập Mã cơ sở KCB (Mã CSKCB)
+   - Nhập Tên đăng nhập và Mật khẩu Cổng tiếp nhận BHXH (egw.baohiemxahoi.gov.vn)
+   - Bấm "Lưu cấu hình".
+4. Bấm nút "Kiểm tra kết nối Cổng BHXH" để xác nhận kết nối thành công.
+
+
+BƯỚC 4: SỬ DỤNG TRÊN VNPT HIS
+--------------------------------------------------------------------------------
+1. Đăng nhập vào VNPT HIS (https://yte-quangnam.vnpthis.vn/...).
+2. Tiện ích tự động tích hợp:
+   - Trang Tiếp nhận bệnh nhân: Tự động kiểm tra thẻ khi nhập số BHYT / quét QR CCCD, tự động điền thông tin và hiển thị lịch sử KCB.
+   - Trang Bảng kê (Ngoại trú, Nội trú, BANT): Nút kiểm tra nhanh bệnh nhân trên danh sách.
+   - Trang Khám bệnh (Ngoại trú, Nội trú, BANT): Nút "Kiểm tra BHYT" trên form và trong modal "Sửa/Chỉnh sửa thông tin bệnh nhân".
+
+BƯỚC 5: BẬT TỰ ĐỘNG CẬP NHẬT (MỖI MÁY LÀM 1 LẦN SAU BƯỚC 2)
+--------------------------------------------------------------------------------
+Người quản lý (làm 1 lần, trước khi phát cho các máy):
+  - Mở file update\nguon_cap_nhat.txt, ghi đúng 1 dòng SOURCE=... :
+      + Thư mục mạng chung, VD:  SOURCE=\\MAY-CHU\TienIch\KiemTraTheBHYT_VNPT_HIS
+      + Hoặc GitHub (repo công khai): SOURCE=https://github.com/<tài-khoản>/<repo>/archive/refs/heads/main.zip
+
+Trên mỗi máy (sau khi đã "Tải tiện ích đã giải nén" ở BƯỚC 2):
+  - Bấm đúp update\CaiDat_TuDongCapNhat.bat -> hiện "DA BAT TU DONG CAP NHAT" là xong.
+  - Không cần quyền Quản trị. Máy tự kiểm tra bản mới mỗi 30 phút (và khi đăng nhập Windows);
+    có bản mới thì tự chép về, tiện ích TỰ TẢI LẠI trong 1 phút. Người dùng chỉ cần F5 trang HIS đang mở.
+  - Nhật ký: %LOCALAPPDATA%\TienIchQueSon\capnhat.log
+  - Muốn tắt: bấm đúp update\GoCaiDat_TuDongCapNhat.bat
+
+Khi phát hành bản mới (người quản lý):
+  1. Tăng "version" trong manifest.json (VD 2.3.0 -> 2.3.1). KHÔNG tăng thì các máy KHÔNG cập nhật.
+  2. Thư mục mạng: chạy  powershell -ExecutionPolicy Bypass -File update\DangBanMoi.ps1 -Dest "\\MAY-CHU\TienIch\KiemTraTheBHYT_VNPT_HIS"
+     GitHub: commit + push lên nhánh main.
+
+
+LƯU Ý PHIÊN BẢN v1.3.14:
+- Giữ ô CCCD (#socmt) ở trạng thái disable theo đúng mặc định của HIS khi vừa mở trang hoặc khi xem bệnh nhân cũ.
+- Khi người dùng click nút Thêm (#themmoi / input name="themmoi" value="Thêm") hoặc phím tắt F2 thì mới enable ô #socmt và auto focus con trỏ đặt tại ô #socmt (không bôi đen).
+- Sau khi kiểm tra BHYT hoặc khi chọn bệnh nhân từ danh sách tiếp nhận, ô #socmt tự động khóa lại (disable) an toàn.
+- Nút "Sửa CCCD" được tinh chỉnh kích thước chuẩn xác (cao 22px, bo góc 3px) cân đối hoàn hảo với ô #socmt.
+================================================================================

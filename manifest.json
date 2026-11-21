@@ -1,0 +1,241 @@
+{
+  "manifest_version": 3,
+  "name": "Tiện ích thông minh - TTYTKV Quế Sơn",
+  "version": "2.3.0",
+  "version_name": "2.3.0",
+  "description": "Tiện ích kiểm tra thẻ BHYT từ Cổng BHXH Việt Nam và tự động điền thông tin tiếp nhận bệnh nhân trên VNPT HIS.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tiện ích thông minh - TTYTKV Quế Sơn",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "https://egw.baohiemxahoi.gov.vn/*",
+    "http://egw.baohiemxahoi.gov.vn/*",
+    "*://*.vnpthis.vn/*",
+    "*://yte-quangnam.vnpthis.vn/*",
+    "https://*/*",
+    "http://*/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://yte-quangnam.vnpthis.vn/*",
+        "*://*.vnpthis.vn/*"
+      ],
+      "exclude_matches": [
+        "*://yte-quangnam.vnpthis.vn/web_his/khambenhnoitru*",
+        "*://yte-quangnam.vnpthis.vn/web_his/kiemtrabangke_khongbhyt*",
+        "*://yte-quangnam.vnpthis.vn/*ho-so-benh-an-dien-tu*",
+        "*://yte-quangnam.vnpthis.vn/*hosobenhandientu*",
+        "*://yte-quangnam.vnpthis.vn/*hosobenhan*",
+        "*://yte-quangnam.vnpthis.vn/*benhandientu*",
+        "*://yte-quangnam.vnpthis.vn/*baocaotiepnhan*",
+        "*://yte-quangnam.vnpthis.vn/*baocao_tiepnhan*",
+        "*://*.vnpthis.vn/web_his/khambenhnoitru*",
+        "*://*.vnpthis.vn/web_his/kiemtrabangke_khongbhyt*",
+        "*://*.vnpthis.vn/*ho-so-benh-an-dien-tu*",
+        "*://*.vnpthis.vn/*hosobenhandientu*",
+        "*://*.vnpthis.vn/*hosobenhan*",
+        "*://*.vnpthis.vn/*benhandientu*",
+        "*://*.vnpthis.vn/*baocaotiepnhan*",
+        "*://*.vnpthis.vn/*baocao_tiepnhan*"
+      ],
+      "js": [
+        "interceptor.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "*://yte-quangnam.vnpthis.vn/*",
+        "*://*.vnpthis.vn/*"
+      ],
+      "exclude_matches": [
+        "*://yte-quangnam.vnpthis.vn/web_his/kiemtrabangke_khongbhyt*",
+        "*://yte-quangnam.vnpthis.vn/*ho-so-benh-an-dien-tu*",
+        "*://yte-quangnam.vnpthis.vn/*hosobenhandientu*",
+        "*://yte-quangnam.vnpthis.vn/*hosobenhan*",
+        "*://yte-quangnam.vnpthis.vn/*benhandientu*",
+        "*://yte-quangnam.vnpthis.vn/*baocaotiepnhan*",
+        "*://yte-quangnam.vnpthis.vn/*baocao_tiepnhan*",
+        "*://*.vnpthis.vn/web_his/kiemtrabangke_khongbhyt*",
+        "*://*.vnpthis.vn/*ho-so-benh-an-dien-tu*",
+        "*://*.vnpthis.vn/*hosobenhandientu*",
+        "*://*.vnpthis.vn/*hosobenhan*",
+        "*://*.vnpthis.vn/*benhandientu*",
+        "*://*.vnpthis.vn/*baocaotiepnhan*",
+        "*://*.vnpthis.vn/*baocao_tiepnhan*"
+      ],
+      "js": [
+        "xlsx.mini.min.js",
+        "dm_cskcb.js",
+        "content.js",
+        "lichsukham_export.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "*://*.vnpthis.vn/web_his/tool-Medicine-Client-CV130*"
+      ],
+      "js": [
+        "medicine_quickselect.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "*://*.vnpthis.vn/web_his/kiemtrabangkenoitru*",
+        "*://*.vnpthis.vn/web_his/kiemtrabangkebannt*",
+        "*://*.vnpthis.vn/web_his/kiemtrabangke",
+        "*://*.vnpthis.vn/web_his/kiemtrabangke?*",
+        "*://*.vnpthis.vn/web_his/kiemtrabangke#*",
+        "*://*.vnpthis.vn/web_his/khambenhnoitru*"
+      ],
+      "js": [
+        "kyso_hangloat.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.vnpthis.vn/web_his/kiemtrabangkenoitru*",
+        "*://*.vnpthis.vn/web_his/kiemtrabangkebannt*",
+        "*://*.vnpthis.vn/web_his/kiemtrabangke",
+        "*://*.vnpthis.vn/web_his/kiemtrabangke?*",
+        "*://*.vnpthis.vn/web_his/kiemtrabangke#*",
+        "*://*.vnpthis.vn/web_his/khambenhnoitru*"
+      ],
+      "js": [
+        "kyso_main.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://*.vnpthis.vn/web_his/sync-send-xml-emr*"
+      ],
+      "js": [
+        "emr_keepdate.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://*.vnpthis.vn/web_his/sync-send-xml-emr-noi-tru*"
+      ],
+      "js": [
+        "emr_batch.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://*.vnpthis.vn/web_his/sync-send-xml-emr-noi-tru*"
+      ],
+      "js": [
+        "emr_bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://emr.vncare.vn/*"
+      ],
+      "js": [
+        "emr_token.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://checkxml.com.vn/sync-insurance*"
+      ],
+      "js": [
+        "resync_checkxml.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://gdbhyt.baohiemxahoi.gov.vn/DanhSachHSKCB*",
+        "*://gdbhyt.baohiemxahoi.gov.vn/DanhSachKetQuaGuiHoSoQD130*",
+        "*://*.vnpthis.vn/web_his/xemlog_congbaohiemxh_130*"
+      ],
+      "js": [
+        "resync_bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://gdbhyt.baohiemxahoi.gov.vn/DanhSachKetQuaGuiHoSoQD130*"
+      ],
+      "js": [
+        "loi130_gd.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://*.vnpthis.vn/web_his/xemlog_congbaohiemxh_130*"
+      ],
+      "js": [
+        "loi130_his.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://gdbhyt.baohiemxahoi.gov.vn/DanhSachHSKCB*"
+      ],
+      "js": [
+        "resync_gd.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "hospitals.json",
+        "dm_cskcb.json",
+        "dm_cskcb.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+# NGUON CAP NHAT - nguoi quan ly sua 1 lan truoc khi phat cho cac may.
+# Ghi DUNG 1 dong SOURCE= (bo dau # o dong muon dung). Vi du:
+#
+#   Thu muc mang chung (khuyen dung trong mang noi bo):
+#     SOURCE=\\MAY-CHU\TienIch\KiemTraTheBHYT_VNPT_HIS
+#
+#   GitHub (repo cong khai), file zip cua nhanh main:
+#     SOURCE=https://github.com/TEN-TAI-KHOAN/TEN-REPO/archive/refs/heads/main.zip
+#
+SOURCE=\\DESKTOP-R6GLQ3D\KiemTraTheBHYT_VNPT_HIS
