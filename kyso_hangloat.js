@@ -30,7 +30,8 @@
   };
   const codeOnThisPage = c => {
     const o = CODES[c].only;
-    return PAGE === 'pdt' ? o === 'pdt' : (!o || o === PAGE);
+    // Trang Khám bệnh nội trú: Phiếu điều trị + Bảng kê nội trú (vị trí NGƯỜI LẬP BẢNG KÊ)
+    return PAGE === 'pdt' ? (o === 'pdt' || c === 'BANGKE') : (!o || o === PAGE);
   };
   // Vai trò ký Phiếu điều trị: lấy vai trò bác sĩ trong ô chọn của HIS (không có thì lấy vai trò đầu tiên)
   const PDT_ROLE = { label: 'Bác sĩ', optRe: /./, prefer: /bác sĩ|bác sỹ|\bBS\b/i, anyRole: true };
@@ -1504,7 +1505,7 @@
     const panel = document.createElement('div');
     panel.id = 'bhyt-ksh-panel';
     panel.innerHTML = `
-      <div class="ksh-head"><b>Ký số hàng loạt ${IS_PDT ? 'Phiếu điều trị' : 'XML'} <span style="font-weight:normal;opacity:.8">(bản 12.8)</span></b><span class="ksh-x" title="Đóng">✕</span></div>
+      <div class="ksh-head"><b>Ký số hàng loạt ${IS_PDT ? 'Phiếu điều trị / Bảng kê' : 'XML'} <span style="font-weight:normal;opacity:.8">(bản 12.9)</span></b><span class="ksh-x" title="Đóng">✕</span></div>
       <div class="ksh-codes"></div>
       <div class="ksh-skip"><label><input type="checkbox" class="ksh-skipdone" checked> <b>Bỏ qua vị trí đã ký xong ở lượt trước</b> (không mở lại hồ sơ đã ký)</label></div>
       <div class="ksh-bar">
@@ -1558,7 +1559,8 @@
       const roles = document.createElement('div');
       roles.className = 'ksh-roles';
       roles.innerHTML = 'Ký vai trò: ' + Object.keys(BK_ROLES).map(k =>
-        `<label><input type="checkbox" class="ksh-role" value="${k}" checked> ${BK_ROLES[k].label}</label>`).join(' ');
+        // Trang Khám bệnh nội trú (khoa lâm sàng): mặc định chỉ ký NGƯỜI LẬP BẢNG KÊ (Nhân viên lập phiếu)
+        `<label><input type="checkbox" class="ksh-role" value="${k}" ${IS_PDT && k !== 'NV' ? '' : 'checked'}> ${BK_ROLES[k].label}</label>`).join(' ');
       codesBox.appendChild(roles);
       // Tích vai trò mà chưa tích loại bảng kê nào -> tự tích loại bảng kê đầu tiên
       roles.addEventListener('change', () => {
