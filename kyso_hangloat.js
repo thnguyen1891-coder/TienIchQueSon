@@ -1066,7 +1066,12 @@
   // ---------- Ký CẬN LÂM SÀNG (trang Khám bệnh nội trú): mọi phiếu "Chưa ký" trong tab ----------
   const clsKey = tr => [cellText(tr, 'KY_HIEU_PHIEU'), cellText(tr, 'SO_PHIEU'), cellText(tr, 'TEN_PHIEU_F') || cellText(tr, 'TEN_PHIEU')].join('|');
   const clsName = tr => (cellText(tr, 'TEN_PHIEU_F') || cellText(tr, 'TEN_PHIEU') || cellText(tr, 'KY_HIEU_PHIEU')).split('\n')[0].slice(0, 90);
+  // Loại phiếu CLS KHÔNG ký (theo yêu cầu): Kết quả test tâm lý, Phiếu đo chức năng hô hấp
+  const CLS_SKIP_KH = /^(KQ_TEST_TAM_LY|PHIEU_DO_CN_HO_HAP)/i;
+  const CLS_SKIP_NAME = /TEST TÂM LÝ|ĐO CHỨC NĂNG HÔ HẤP/i;
+  const clsSkipped = tr => CLS_SKIP_KH.test(cellText(tr, 'KY_HIEU_PHIEU')) || CLS_SKIP_NAME.test(clsName(tr));
   const clsTodo = tr => {
+    if (clsSkipped(tr)) return false;
     const s = rowStatus(tr);
     return s === 'todo' || (s === 'partial' && !tr.querySelector('[data-type="btn-huy-ky-so"]'));
   };
@@ -1074,9 +1079,15 @@
   async function signClsAll(ctx, dryRun) {
     const results = [];
     const tried = new Set();
+    let loggedSkip = false;
     for (let guard = 0; guard < 60 && !stopRequested; guard++) {
       const ks = await ensureKhac(ctx, CODES.CLS.tab);
       await waitGridStable(ctx);
+      if (!loggedSkip) {
+        loggedSkip = true;
+        const sk = findDocRows(currentKySoFor(ctx) || ks).filter(tr => clsSkipped(tr) && rowStatus(tr) !== 'done');
+        if (sk.length) ctx.log(`  CLS: ⏭ bỏ qua (không ký) ${sk.length} phiếu: ${[...new Set(sk.map(clsName))].join('; ')}`);
+      }
       const rows = findDocRows(currentKySoFor(ctx) || ks).filter(tr => cellText(tr, 'KY_HIEU_PHIEU') && clsTodo(tr) && !tried.has(clsKey(tr)));
       const tr = rows[0];
       if (!tr) break;
