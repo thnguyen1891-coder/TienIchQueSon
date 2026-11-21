@@ -1088,7 +1088,16 @@
         const sk = findDocRows(currentKySoFor(ctx) || ks).filter(tr => clsSkipped(tr) && rowStatus(tr) !== 'done');
         if (sk.length) ctx.log(`  CLS: ⏭ bỏ qua (không ký) ${sk.length} phiếu: ${[...new Set(sk.map(clsName))].join('; ')}`);
       }
-      const rows = findDocRows(currentKySoFor(ctx) || ks).filter(tr => cellText(tr, 'KY_HIEU_PHIEU') && clsTodo(tr) && !tried.has(clsKey(tr)));
+      // Thứ tự: PHIẾU CHỈ ĐỊNH ký trước, rồi phiếu khác, KẾT QUẢ ký sau cùng
+      const rank = tr => {
+        const kh = cellText(tr, 'KY_HIEU_PHIEU'), nm = clsName(tr);
+        if (/^CD_|CHI_DINH|CHIDINH/i.test(kh) || /chỉ định/i.test(nm)) return 0;
+        if (/^KQ_|KET_QUA|KETQUA/i.test(kh) || /kết quả/i.test(nm)) return 2;
+        return 1;
+      };
+      const rows = findDocRows(currentKySoFor(ctx) || ks)
+        .filter(tr => cellText(tr, 'KY_HIEU_PHIEU') && clsTodo(tr) && !tried.has(clsKey(tr)))
+        .sort((a, b) => rank(a) - rank(b));
       const tr = rows[0];
       if (!tr) break;
       const key = clsKey(tr), name = clsName(tr);
