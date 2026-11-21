@@ -1076,6 +1076,38 @@
     return s === 'todo' || (s === 'partial' && !tr.querySelector('[data-type="btn-huy-ky-so"]'));
   };
 
+  // Dòng mốc vị trí ký của bác sĩ trên phiếu CLS (ưu tiên từ trên xuống)
+  const CLS_ANCHORS = ['BÁC SĨ ĐIỀU TRỊ', 'BÁC SĨ CHỈ ĐỊNH', 'NGƯỜI CHỈ ĐỊNH', 'BÁC SĨ KHÁM BỆNH', 'BÁC SỸ ĐIỀU TRỊ', 'BÁC SỸ CHỈ ĐỊNH'];
+  async function clsPlace(ctx, name) {
+    const info = await mainCall('pdfText', { patterns: [...CLS_ANCHORS.map(a => a.replace(/\s+/g, '\\s+')), 'ký, ghi rõ họ tên'] });
+    const up = s => String(s || '').normalize('NFC').replace(/\s+/g, ' ').toUpperCase();
+    let anchor = null, hits = [];
+    for (const a of CLS_ANCHORS) { hits = info.hits.filter(h => up(h.s).includes(a)); if (hits.length) { anchor = a; break; } }
+    if (!anchor) {
+      // Không thấy dòng mốc -> giữ vị trí HIS (bảo đảm có khung)
+      if (!allWrappers().length && !await addSignatureOnce(PDT_ROLE)) throw new Error('Không thêm được khung chữ ký');
+      return 'KHÔNG thấy dòng "Bác sĩ điều trị/chỉ định" -> để vị trí HIS đặt sẵn, cần kiểm tra';
+    }
+    const page = Math.max(...hits.map(h => h.page));
+    await gotoPdfPage(page);
+    const role = { ...PDT_ROLE, anchor };
+    const w = await addSignatureForRole(role, page); // dùng lại khung HIS đã thêm (đúng trang) hoặc thêm mới
+    // Chỉ giữ 1 khung (bỏ khung thừa ở trang khác)
+    for (const x of allWrappers()) if (x !== w && x.id !== w.id) await removeWrapper(x);
+    const t = computeTarget({ ...info, hits: info.hits.map(h => ({ ...h, s: up(h.s) })) }, role, page, w);
+    if (!t) throw new Error(`Không tính được vị trí dưới "${anchor}"`);
+    const id = w.id;
+    let moved = await dragWrapperTo(() => (id && document.getElementById(id)) || allWrappers().find(x => wrapperPage(x) === page), t.left, t.top);
+    if (!moved && id) {
+      try {
+        const res = await mainCall('placeSignature', { id, page, roleRe: '.', left: t.left, top: t.top });
+        moved = !!res.saved && Math.abs(res.saved.left - t.left) < 4 && Math.abs(res.saved.top - t.top) < 4;
+      } catch (e) { ctx.log('    ' + e.message); }
+    }
+    if (!moved) throw new Error(`Không kéo được chữ ký tới dưới "${anchor}"`);
+    return `đặt chữ ký dưới "${anchor}" (trang ${page})`;
+  }
+
   async function signClsAll(ctx, dryRun) {
     const results = [];
     const tried = new Set();
@@ -1156,12 +1188,10 @@
     await sleep(1000);
     { let sig = '', since = Date.now(); const s0 = Date.now();
       while (Date.now() - s0 < 6000) { const s = pdfCurrentPage() + '|' + allWrappers().length; if (s !== sig) { sig = s; since = Date.now(); } else if (Date.now() - since >= 1200) break; await sleep(150); } }
-    if (!allWrappers().length) {
-      const w = await addSignatureOnce(PDT_ROLE); // vị trí mặc định HIS cấu hình cho loại phiếu này
-      if (!w) throw new Error('Không thêm được khung chữ ký');
-    }
-    ctx.log(`    ${allWrappers().length} khung chữ ký (vị trí HIS cấu hình sẵn)`);
-    if (dryRun) return { code: 'CLS', result: 'skip', dry: true, note: `CHẠY THỬ ${name}: đã có khung chữ ký, CHƯA bấm "Hoàn tất ký số". Bạn kiểm tra vị trí rồi bấm Đóng.` };
+    // Kéo chữ ký vào ngay DƯỚI dòng mốc của người ký (VD "BÁC SĨ ĐIỀU TRỊ" ở cột trái phiếu kết quả XN)
+    const pos = await clsPlace(ctx, name);
+    ctx.log(`    ${pos}`);
+    if (dryRun) return { code: 'CLS', result: 'skip', dry: true, note: `CHẠY THỬ ${name}: đã đặt chữ ký (${pos}), CHƯA bấm "Hoàn tất ký số". Bạn kiểm tra vị trí rồi bấm Đóng.` };
     const err = await completePdfSign(ctx, 'CLS');
     if (err) return { code: 'CLS', result: 'error', note: `${name}: ${err}` };
     return { code: 'CLS', result: 'ok', note: `Đã ký: ${name}` };
