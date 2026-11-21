@@ -1138,6 +1138,7 @@
       catch (e) { ctx.log(`    ⏭ ${role.label}: ${e.message}`); continue; } // tài khoản không có vai trò này
       const t = computeTarget(info, role, page, w);
       if (!t) { ctx.log(`    ⚠ không tính được vị trí "${role.anchor}"`); continue; }
+      await liftAboveName(ctx, page, role.anchor, w, t); // không che tên in sẵn dưới dòng mốc
       const getW = () => pageWrappers(page).filter(x => role.optRe.test((x.textContent || '').normalize('NFC'))).pop();
       let moved = await dragWrapperTo(getW, t.left, t.top);
       if (!moved) {
@@ -1174,6 +1175,31 @@
     return s === 'todo' || (s === 'partial' && !tr.querySelector('[data-type="btn-huy-ky-so"]'));
   };
 
+  // Có dòng TÊN NGƯỜI KÝ in sẵn ngay dưới dòng mốc (VD "BSCKII Trần Xêm" dưới "GIÁM ĐỐC") -> đẩy chữ ký LÊN,
+  // nằm gọn giữa dòng mốc và dòng tên, không che tên. t = {left, top} (px) sẽ được sửa trực tiếp.
+  async function liftAboveName(ctx, page, anchorUpper, w, t) {
+    try {
+      const all = await mainCall('pdfText', { patterns: ['\\S'] });
+      const up = s => String(s || '').normalize('NFC').replace(/\s+/g, ' ').toUpperCase();
+      const sc = all.scale || 1.5;
+      const pg = all.pages.find(p => p.n === page) || { h: 842 };
+      const a = all.hits.filter(h => h.page === page && up(h.s).includes(anchorUpper)).pop();
+      if (!a) return;
+      const aCx = a.x + a.w / 2;
+      const below = all.hits.filter(h => h.page === page && h.y < a.y - 3 && h.y > a.y - 130 &&
+        Math.abs((h.x + h.w / 2) - aCx) < 110 && !/ký, ghi rõ|ghi rõ họ tên/i.test(h.s) && h.s.trim().length > 2);
+      if (!below.length) return;
+      const nm = below.sort((p, q) => q.y - p.y)[0];                 // dòng gần mốc nhất phía dưới = tên người ký
+      const nameTop = (pg.h - nm.y - (nm.fs || 11)) * sc;           // mép trên dòng tên (px)
+      const labelBottom = (pg.h - a.y) * sc + 2;                     // ngay dưới dòng mốc (px)
+      const wh = w.offsetHeight || 65;
+      if (t.top + wh > nameTop - 2) {
+        // nằm sát trên tên; thiếu chỗ thì cho phép chồng nhẹ lên dòng mốc (tối đa nửa khung)
+        t.top = Math.max(0, Math.round(Math.max(labelBottom - wh / 2, nameTop - wh - 2)));
+      }
+    } catch (e) { ctx.log('    (không đọc được dòng tên người ký: ' + e.message + ')'); }
+  }
+
   // Dòng mốc vị trí ký của bác sĩ trên phiếu CLS (ưu tiên từ trên xuống)
   const CLS_ANCHORS = ['BÁC SĨ ĐIỀU TRỊ', 'BÁC SĨ CHỈ ĐỊNH', 'NGƯỜI CHỈ ĐỊNH', 'BÁC SĨ KHÁM BỆNH', 'BÁC SỸ ĐIỀU TRỊ', 'BÁC SỸ CHỈ ĐỊNH'];
   async function clsPlace(ctx, name) {
@@ -1194,26 +1220,7 @@
     for (const x of allWrappers()) if (x !== w && x.id !== w.id) await removeWrapper(x);
     const t = computeTarget({ ...info, hits: info.hits.map(h => ({ ...h, s: up(h.s) })) }, role, page, w);
     if (!t) throw new Error(`Không tính được vị trí dưới "${anchor}"`);
-    // Có dòng TÊN BÁC SĨ ngay dưới dòng mốc (VD "Nguyễn Văn Phúc") -> kéo chữ ký LÊN, nằm gọn giữa mốc và tên
-    try {
-      const all = await mainCall('pdfText', { patterns: ['\\S'] });
-      const sc = all.scale || 1.5;
-      const pg = all.pages.find(p => p.n === page) || { h: 842 };
-      const a = hits.filter(h => h.page === page).pop();
-      const aCx = a.x + a.w / 2;
-      const below = all.hits.filter(h => h.page === page && h.y < a.y - 3 && h.y > a.y - 130 &&
-        Math.abs((h.x + h.w / 2) - aCx) < 110 && !/ký, ghi rõ|ghi rõ họ tên/i.test(h.s) && h.s.trim().length > 2);
-      if (below.length) {
-        const nm = below.sort((p, q) => q.y - p.y)[0];                 // dòng gần mốc nhất phía dưới = tên BS
-        const nameTop = (pg.h - nm.y - (nm.fs || 11)) * sc;           // mép trên dòng tên (px)
-        const labelBottom = (pg.h - a.y) * sc + 2;                     // ngay dưới dòng mốc (px)
-        const wh = w.offsetHeight || 65;
-        if (t.top + wh > nameTop - 2) {
-          // nằm sát trên tên; thiếu chỗ thì cho phép chồng nhẹ lên dòng mốc (tối đa nửa khung)
-          t.top = Math.round(Math.max(labelBottom - wh / 2, nameTop - wh - 2));
-        }
-      }
-    } catch (e) { ctx.log('    (không đọc được dòng tên bác sĩ: ' + e.message + ')'); }
+    await liftAboveName(ctx, page, anchor, w, t);
     const id = w.id;
     let moved = await dragWrapperTo(() => (id && document.getElementById(id)) || allWrappers().find(x => wrapperPage(x) === page), t.left, t.top);
     if (!moved && id) {
