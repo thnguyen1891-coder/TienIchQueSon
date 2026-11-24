@@ -295,9 +295,7 @@
     } else ok.push('Giờ nhận sau giờ nhập viện và vào khoa');
     if (!mine && T > now() + 60 * MIN) warn.push({ t: `Giờ nhận ${fmt(T)} ở tương lai.`, fix: { label: 'Đặt giờ hiện tại', T: Math.max(floorMin(now()), lo) } });
     // 2. Giờ rời giường
-    if (R !== Infinity && R > now() + 60 * MIN) {
-      err.push({ t: `Giờ rời ${fmt(R)} ở tương lai — chỉ nhập khi BN đã thực sự rời giường (ra viện / chuyển giường / chuyển khoa).`, fix: { label: 'Xoá giờ rời', R: null } });
-    }
+    if (R !== Infinity && R > now()) ok.push(`Giờ rời dự kiến ${fmt(R)}`); // cho phép nhập giờ rời ở tương lai
     if (R !== Infinity) {
       if (R <= start) err.push({ t: 'Giờ rời giường phải sau giờ nhận giường.', fix: { label: 'Xoá giờ rời', R: null } });
       else if (R - start <= 4 * 60 * MIN) warn.push({ t: `Nằm ${dur(Math.round((R - start) / MIN))} ≤ 4 giờ: không được tính tiền giường (TT22).`, confirm4h: true });
