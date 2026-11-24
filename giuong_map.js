@@ -262,52 +262,64 @@
     return { ranked, ghep };
   }
 
+  // Giờ nhận giường sớm nhất hợp lệ cho BN: sau giờ nhập viện, sau giờ vào khoa, sau lúc nhận giường hiện tại (khi đổi giường)
+  function minT(p) {
+    if (!p) return -Infinity;
+    let m = -Infinity;
+    if (p.nhapvien) m = Math.max(m, floorMin(p.nhapvien) + MIN);
+    if (p.vaokhoa) m = Math.max(m, floorMin(p.vaokhoa) + MIN);
+    if (p.cur && p.cur.open && p.cur.from) m = Math.max(m, floorMin(p.cur.from) + MIN);
+    return m;
+  }
+
+  // Rà soát toàn bộ quy định cho phương án [BN, giường, T, R].
+  // Trả về: err (chặn, kèm nút sửa 1 chạm), warn (lưu ý, kèm nút sửa nếu có), ok (đã đạt).
+  // fix = { label, T?, R? (null = xoá giờ rời) } → bấm là áp dụng ngay.
   function ruleNotes(who, T, R, target, sug) {
-    const err = [], warn = [], info = [];
-    if (who) {
-      const mine = !!(target && target.mine);
-      const start = mine ? who.cur.from : T; // giường đang nằm: tính từ lúc nhận giường thật
-      if (!mine) {
-        if (who.nhapvien && T <= who.nhapvien) err.push(`Giờ nhận giường phải <b>sau giờ nhập viện</b> (${fmt(who.nhapvien)}).`);
-        if (who.vaokhoa && T < who.vaokhoa) warn.push(`Giờ nhận giường trước giờ vào khoa (${fmt(who.vaokhoa)}).`);
-        if (T > now() + 30 * MIN) warn.push('Giờ nhận giường đang ở tương lai.');
-      }
-      if (R !== Infinity) {
-        if (R <= start) err.push('Giờ rời giường phải sau giờ nhận giường.');
-        else if (R - start <= 4 * 60 * MIN) warn.push(`Nằm ${dur(Math.round((R - start) / MIN))} (≤ 4 giờ): <b>không được tính tiền giường</b> (TT22 Đ6 K1 đ).`);
-      }
-      if (who.cur && who.cur.open) {
-        const cb = `${who.cur.loai}${pad3(who.cur.so)}`;
-        const chot = who.cur.to; // giờ chốt dòng giường gần nhất
-        if (target && target.mine) {
-          info.push(`BN đang nằm <b>${cb}</b> từ ${fmtFull(who.cur.from)} — <b>không cần cấp lại</b>: HIS tự tách dòng giường theo ngày y lệnh (dòng gần nhất chốt ${chot ? fmtFull(chot) : '…'}), HIS cũng không cho cấp trùng giường BN đang nằm.`);
-          info.push(`Nút bên trên mở form HIS và chọn sẵn <b>dòng giường hiện tại</b>${R !== Infinity ? `, điền giờ rời giường <b>${fmtFull(R)}</b>` : ''} — bấm <b>Cập nhật</b> nếu cần sửa. Muốn chuyển giường thì chọn giường khác trên sơ đồ.`);
-        } else {
-          warn.push(`BN đang nằm giường <b>${cb}</b> từ ${fmt(who.cur.from)}${chot ? ` (dòng gần nhất chốt ${fmt(chot)})` : ''}. Chọn giường khác là <b>đổi giường</b>: giường cũ phải rời đúng lúc ${fmt(T)}; trong 1 ngày chỉ tính tối đa <b>1 ngày giường</b>.`);
-        }
-      }
+    const err = [], warn = [], ok = [];
+    if (!who || !target) return { err, warn, ok };
+    const lb = `${target.loai}${pad3(target.so)}`;
+    const mine = !!target.mine;
+    const start = mine ? who.cur.from : T;
+
+    // 1. Giờ nhận giường (HIS chặn giờ cấp ≤ giờ nhập viện; CHECKXML xét theo giờ vào/ra)
+    if (!mine) {
+      const lo = minT(who);
+      if (T < lo) err.push({ t: `Giờ nhận ${fmt(T)} phải sau ${fmt(lo - MIN)} (nhập viện / vào khoa / giường hiện tại).`, fix: { label: `Đặt ${fmt(lo)}`, T: lo } });
+      else ok.push('Giờ nhận sau giờ nhập viện và vào khoa');
+      if (T > now() + 60 * MIN) warn.push({ t: `Giờ nhận ${fmt(T)} ở tương lai.`, fix: { label: 'Đặt giờ hiện tại', T: Math.max(floorMin(now()), lo) } });
     }
-    if (target) {
-      const lb = `${target.loai}${pad3(target.so)}`;
-      if (target.share) {
-        const sh = target.share;
-        warn.push(`Nằm ghép <b>${sh.level} người</b> trên giường ${lb} từ ${fmt(T)}: mọi BN trên giường chỉ được thanh toán <b>${sh.pct}%</b> giá giường (TT 39/2024) — extension tự tick "Nằm cùng giường" và chọn mức ${sh.pct}%.`);
-        if (!sh.sameGender && who) warn.push('BN nằm chung <b>khác giới</b> — cân nhắc giường khác.');
-      }
-      target.cf.forEach(c => {
-        const t = c.iv.to === Infinity ? 'đang nằm' : `nằm tới ${fmt(c.iv.to)}`;
-        if (c.ghep && target.share) {
-          const ok = (c.iv.songuoi || 1) === target.share.muc;
-          (ok ? warn : err).push(`BN <b>${esc(c.iv.p.ten)}</b> ${t} trên giường ${lb} (từ ${fmt(c.iv.from)}, đang ghi ${c.iv.songuoi > 1 ? 'nằm chung ' + (c.iv.songuoi === 3 ? '30%' : '50%') : 'nằm riêng 100%'})${ok ? ' — đã đúng mức.' : ` → phải cập nhật sang nằm chung <b>${target.share.pct}%</b> từ ${fmt(T)}, nếu không CHECKXML báo lỗi nằm ghép chưa giảm tiền cho BN này.`}`);
-        } else if (!c.ghep) {
-          warn.push(`Giường ${lb}: BN <b>${esc(c.iv.p.ten)}</b> ${t} (từ ${fmt(c.iv.from)}) — chồng <b>${dur(c.ov)}</b> (bàn giao ≤ 4 giờ): nên lùi giờ nhận giường cho khớp giờ BN kia rời giường để khỏi bị cảnh báo.`);
-        }
-      });
-      if (target.state === 'free' && !target.hisFree) warn.push(`HIS báo giường ${lb} không trống tại ${fmt(T)} (có thể BN ban ngày / BN đã chuyển).`);
+    // 2. Giờ rời giường
+    if (R !== Infinity) {
+      if (R <= start) err.push({ t: 'Giờ rời giường phải sau giờ nhận giường.', fix: { label: 'Xoá giờ rời', R: null } });
+      else if (R - start <= 4 * 60 * MIN) warn.push({ t: `Nằm ${dur(Math.round((R - start) / MIN))} ≤ 4 giờ: không được tính tiền giường (TT22).`, confirm4h: true });
+      else ok.push(`Thời gian nằm ${dur(Math.round((R - start) / MIN))} (> 4 giờ)`);
     }
-    if (!sug.ranked.length) warn.push(`Khoa <b>hết giường trống</b> lúc ${fmt(T)} → gợi ý nằm ghép (ưu tiên 2 người/giường, cùng giới; tối đa 3 người/giường).`);
-    else if (sug.ranked[0].b.loai !== 'H') warn.push('Đã hết giường kế hoạch (H): giường kê thêm chỉ dùng khi quá tải.');
-    return { err, warn, info };
+    // 3. Trùng giờ với BN khác trên giường
+    const others = target.cf || [];
+    const handover = others.filter(c => !c.ghep);
+    if (handover.length) {
+      const leave = Math.max(...handover.map(c => c.iv.to === Infinity ? 0 : c.iv.to));
+      const c0 = handover[0];
+      warn.push({ t: `Trùng ${dur(Math.max(...handover.map(c => c.ov)))} với ${esc(c0.iv.p.ten)} (rời ${fmt(c0.iv.to)}) lúc bàn giao giường.`,
+        fix: leave && isFinite(leave) ? { label: `Nhận từ ${fmt(floorMin(leave) + MIN)}`, T: floorMin(leave) + MIN } : null });
+    }
+    if (target.share) {
+      const sh = target.share;
+      ok.push(`Nằm chung ${sh.level} người → tự chọn mức ${sh.pct}% cho mọi BN trên giường`);
+      if (!sh.sameGender) warn.push({ t: 'Nằm chung khác giới.' });
+      if (!sh.needUpdate.length) ok.push('BN đang nằm đã ghi đúng mức nằm chung');
+    } else if (!handover.length) ok.push(mine ? 'Giường đang nằm, không trùng BN khác' : `Giường ${lb} trống, không trùng giờ BN khác`);
+    // 4. Đổi giường giữa chừng: 1 ngày chỉ 1 ngày giường
+    if (who.cur && who.cur.open && !mine) {
+      warn.push({ t: `Đổi giường từ ${who.cur.loai}${pad3(who.cur.so)}: trong ngày chỉ tính 1 ngày giường — kiểm tra bảng kê ngày ${toDateVN(T)}.` });
+    }
+    // 5. Ưu tiên giường kế hoạch
+    if (target.loai !== 'H') warn.push({ t: `${LOAI[target.loai]}: chỉ dùng khi hết giường kế hoạch.` });
+    else ok.push('Giường kế hoạch (H)');
+    if (target.state === 'free' && !target.hisFree && !mine) warn.push({ t: `HIS báo ${lb} có người lúc ${fmt(T)} (BN ban ngày / đã chuyển?).` });
+    if (!sug.ranked.length) ok.push('Hết giường trống → mới xếp nằm chung');
+    return { err, warn, ok };
   }
 
   // ---------- Mở form cấp giường gốc của HIS và điền sẵn ----------
@@ -378,6 +390,15 @@
     if (!loaiSel) throw new Error('Form cấp giường chưa mở (BN thuộc khoa khác hoặc chưa có bệnh án chính thức?).');
     await sleep(700); // HIS nạp phòng/giường/ngày mặc định
     const soSel = document.getElementById(F('sostt_giuongbenh_vpc'));
+    // Chống mở nhầm BN: tên trên form HIS phải khớp BN đang xét
+    const nameOf = s => stripTags(s).normalize('NFC').toUpperCase().replace(/\s+/g, ' ').trim();
+    const hoten = document.getElementById(F('hoten'));
+    await waitFor(() => hoten && hoten.value, 3000);
+    if (hoten && hoten.value && nameOf(hoten.value) !== nameOf(who.ten)) {
+      const dong = document.getElementById(F('bt_dong')); if (dong) dong.click();
+      throw new Error(`Form HIS mở ra BN "${hoten.value}" thay vì "${who.ten}" — đã đóng form, chọn lại BN rồi bấm lại.`);
+    }
+    if (opts && opts.endOld) return markCoOccupant(F, bed, T, 1, R);
     if (opts && opts.coOccupant) return markCoOccupant(F, bed, T, muc, Infinity);
     // Giường BN đang nằm: không cấp lại (HIS tự tách dòng theo ngày y lệnh) → mở dòng hiện tại, điền giờ rời nếu có
     if (bed.mine && !banngay) return markCoOccupant(F, bed, Infinity, 1, R);
@@ -411,8 +432,16 @@
       if (!ncOk()) await setNamCung();
       if (!timesOk()) { setTimes(); await sleep(400); }
       if (loaiSel.value !== bed.loai) { loaiSel.value = bed.loai; loaiSel.dispatchEvent(new Event('change', { bubbles: true })); }
-      await waitFor(() => soSel && Array.from(soSel.options).some(o => Number(o.value) === bed.so), 3000);
-      const opt = soSel && Array.from(soSel.options).find(o => Number(o.value) === bed.so);
+      await waitFor(() => soSel && Array.from(soSel.options).some(o => Number(o.value) === bed.so), muc > 1 ? 1500 : 3000);
+      let opt = soSel && Array.from(soSel.options).find(o => Number(o.value) === bed.so);
+      // Nằm chung: danh sách "Giường số" của HIS chỉ có giường trống, không bao giờ có giường đã có người
+      // (đã kiểm chứng trên dữ liệu khoa Truyền nhiễm) → thêm giường ghép vào ô chọn như HIS tự làm khi nạp dòng giường cũ.
+      if (!opt && muc > 1 && soSel) {
+        opt = document.createElement('option');
+        opt.value = String(bed.so);
+        opt.textContent = bed.ten || `Giường ${bed.loai}${pad3(bed.so)}`;
+        soSel.appendChild(opt);
+      }
       if (opt && soSel.value !== opt.value) { soSel.value = opt.value; soSel.dispatchEvent(new Event('change', { bubbles: true })); }
       await sleep(700);
       ok = timesOk() && ncOk() && loaiSel.value === bed.loai && Number(soSel.value) === bed.so;
@@ -429,7 +458,7 @@
       // Không để form HIS mở với giường sai (dễ bấm lưu nhầm)
       if (opts && opts.coOccupant) { if (soSel) soSel.selectedIndex = -1; }
       else { const dong = document.getElementById(F('bt_dong')); if (dong) dong.click(); }
-      if (muc > 1 && !(opts && opts.coOccupant)) throw new Error(`HIS chưa cho chọn giường ${bed.loai}${pad3(bed.so)} ở mức nằm chung ${muc === 3 ? '30%' : '50%'}: HIS chỉ cho ghép vào giường mà BN đang nằm đã được ghi "nằm chung". Làm Bước 1 (cập nhật BN đang nằm) trước, rồi Tải lại và bấm lại. (Đã đóng form HIS để tránh lưu nhầm giường.)`);
+      if (muc > 1 && !(opts && opts.coOccupant)) throw new Error(`Không chọn được giường ${bed.loai}${pad3(bed.so)} ở mức nằm chung ${muc === 3 ? '30%' : '50%'} trên form HIS — đã đóng form để tránh lưu nhầm, bấm lại.`);
       if (opts && opts.coOccupant) throw new Error(`Đã tick "Nằm cùng giường" mức ${muc === 3 ? '30%' : '50%'} cho BN đang nằm, nhưng HIS không liệt kê lại giường ${bed.loai}${pad3(bed.so)} — chọn tay giường đó trong form (giường hiện tại của BN).`);
       throw new Error(`HIS không cho chọn giường ${bed.loai}${pad3(bed.so)} lúc ${fmt(T)} (có thể vừa có BN khác nhận). Chọn giường khác trong form.`);
     }
@@ -495,6 +524,75 @@
   let T = null, R = Infinity; // giờ nhận / rời giường
   let target = null;    // key giường đang chọn
   let freeSeq = 0;
+  let lastFixes = [];   // nút sửa 1 chạm đang hiện
+  let lastSteps = [];   // các bước thực hiện đang hiện
+  const clicked = new Set(); // bước đã mở form HIS
+  let watchTimer = null;
+
+  // Kế hoạch thực hiện cho phương án đã chọn: mỗi bước = 1 lần mở form HIS đã điền sẵn
+  function buildSteps(who, tb, T, R) {
+    const steps = [];
+    const lb = bedLabel(tb);
+    if (tb.mine) {
+      steps.push({ id: `mine|${who.key}|${R}`, kind: 'mine', label: R !== Infinity ? `Cập nhật giờ rời ${lb} lúc ${fmt(R)}` : `Mở dòng giường hiện tại ${lb}` });
+      return (lastSteps = steps);
+    }
+    if (who.cur && who.cur.open) {
+      // Đổi giường: kết thúc dòng giường cũ đúng lúc nhận giường mới (tránh 2 giường chồng giờ)
+      const done = !!(who.cur.to && Math.abs(who.cur.to - T) <= 2 * MIN);
+      steps.push({ id: `end|${who.key}|${T}`, kind: 'endOld', done, bed: { loai: who.cur.loai, so: who.cur.so },
+        label: `Kết thúc giường cũ ${who.cur.loai}${pad3(who.cur.so)} lúc ${fmt(T)}` });
+    }
+    if (tb.share) {
+      tb.share.needUpdate.forEach(iv => steps.push(iv.p.tt === '1'
+        ? { id: `co|${iv.p.key}|${tb.key}|${tb.share.muc}`, kind: 'co', p: iv.p, label: `Chuyển ${iv.p.ten} sang nằm chung ${tb.share.pct}%` }
+        : { id: `man|${iv.p.key}`, kind: 'manual', done: false, label: `${iv.p.ten} đã rời khoa — sửa tay sang ${tb.share.pct}%` }));
+    }
+    steps.push({ id: `cap|${who.key}|${tb.key}|${T}|${R}`, kind: 'cap',
+      label: `${tb.share ? 'Cấp giường nằm chung' : who.cur && who.cur.open ? 'Nhận giường mới' : 'Cấp giường'} ${lb}${tb.share ? ` (${tb.share.pct}%)` : ''} lúc ${fmt(T)}` });
+    return (lastSteps = steps);
+  }
+
+  // Chạy 1 bước: kiểm tra lại dữ liệu mới nhất → mở form HIS điền sẵn → theo dõi đóng form để tự cập nhật sơ đồ
+  async function runStep(step, banngay) {
+    if (step.kind === 'manual') return;
+    // Dữ liệu có thể đã đổi từ lúc mở sơ đồ (BN khác vừa nhận giường) → hỏi lại HIS trước khi làm
+    free = await loadFree(base, T);
+    const map = buildMap(base, free, who, T, R);
+    const bed = findBed(map, target);
+    if (!bed) throw new Error('Không tìm thấy giường đã chọn.');
+    const sug = suggest(map, who);
+    const okState = bed.state === 'free' || (bed.state === 'share' && !sug.ranked.length);
+    if (!okState && step.kind !== 'endOld' && step.kind !== 'mine') {
+      target = null;
+      render({ cls: 'err', text: `Giường ${bedLabel(bed)} vừa thay đổi (có BN khác nhận / vừa có giường trống). Đã chọn lại giường tốt nhất — kiểm tra rồi bấm lại.` });
+      return;
+    }
+    if ((step.kind === 'cap') && R !== Infinity && R - T <= 4 * 60 * MIN && R > T
+      && !window.confirm(`BN nằm ${dur(Math.round((R - T) / MIN))} (≤ 4 giờ): theo TT22 không được tính tiền giường.\nVẫn cấp giường?`)) return;
+    if (step.kind === 'endOld') await openHisForm(who, step.bed, T, T, { endOld: true });
+    else if (step.kind === 'co') await openHisForm(step.p, bed, T, Infinity, { muc: bed.share.muc, coOccupant: true });
+    else await openHisForm(who, bed, T, R, { banngay: !!banngay });
+    clicked.add(step.id);
+    document.getElementById('bhyt-gm-panel').classList.remove('open');
+    watchHis();
+  }
+
+  // Khi form HIS đóng (đã lưu hoặc huỷ) → mở lại sơ đồ, tải lại dữ liệu, giữ nguyên BN / giường / giờ đang làm
+  function watchHis() {
+    if (watchTimer) clearInterval(watchTimer);
+    const keep = { key: who && who.key, target, T, R };
+    let closedCount = 0;
+    const open = () => ['capgiuongnoitru_cv3176_modal', 'capgiuongbanngay_modal_cv3176']
+      .some(id => { const e = document.getElementById(id); return e && e.offsetParent; });
+    watchTimer = setInterval(() => {
+      if (open()) { closedCount = 0; return; }
+      if (++closedCount < 2) return;
+      clearInterval(watchTimer); watchTimer = null;
+      document.getElementById('bhyt-gm-panel').classList.add('open');
+      refresh(keep);
+    }, 700);
+  }
 
   function css() {
     if (document.getElementById('bhyt-gm-css')) return;
@@ -545,6 +643,20 @@
     #bhyt-gm-panel .gm-go.alt { background: #fff; color: #0f766e; border: 1px solid #0f766e; padding: 6px; font-size: 13px; }
     #bhyt-gm-panel .gm-go.co { background: #b45309; }
     #bhyt-gm-panel .gm-go:disabled { opacity: .45; cursor: default; }
+    #bhyt-gm-panel .gm-plan { margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 6px; }
+    #bhyt-gm-panel .gm-ps { display: grid; grid-template-columns: 24px 1fr; gap: 6px; align-items: center; margin-top: 6px; }
+    #bhyt-gm-panel .gm-ps .n { width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; color: #334155; font-weight: bold; font-size: 12px;
+      display: inline-flex; align-items: center; justify-content: center; }
+    #bhyt-gm-panel .gm-ps.done .n { background: #16a34a; color: #fff; }
+    #bhyt-gm-panel .gm-ps .gm-go { margin-top: 0; }
+    #bhyt-gm-panel .gm-ps .gm-sub { grid-column: 2; }
+    #bhyt-gm-panel .gm-iss { margin-top: 6px; font-size: 13px; padding: 5px 8px; border-radius: 6px; }
+    #bhyt-gm-panel .gm-iss.e { background: #fef2f2; color: #b91c1c; }
+    #bhyt-gm-panel .gm-iss.w { background: #fffbeb; color: #92400e; }
+    #bhyt-gm-panel .gm-fix { margin-left: 6px; padding: 2px 8px; border-radius: 4px; border: 1px solid currentColor; background: #fff; color: inherit; cursor: pointer; font-weight: bold; font-size: 12px; }
+    #bhyt-gm-panel .gm-ok { margin-top: 8px; font-size: 12px; color: #15803d; }
+    #bhyt-gm-panel .gm-ok summary { cursor: pointer; }
+    #bhyt-gm-panel .gm-ok ul { margin: 4px 0 0; padding-left: 18px; }
     #bhyt-gm-panel .gm-substep { font-size: 12px; font-weight: bold; color: #b45309; margin-top: 8px; }
     #bhyt-gm-panel .gm-note { margin: 8px 0 0; padding-left: 18px; font-size: 12px; }
     #bhyt-gm-panel .gm-note li { margin: 3px 0; }
@@ -708,11 +820,17 @@
     render();
   }
 
-  async function refresh() {
+  async function refresh(keep) {
     const body = document.querySelector('#bhyt-gm-panel .gm-body');
     body.innerHTML = '<div class="gm-load">Đang tải danh mục giường, danh sách BN và lịch sử nằm giường…</div>';
     try {
       base = await loadBase();
+      const kept = keep && keep.key && base.pts.find(p => p.key === keep.key);
+      if (kept) {
+        who = kept; T = keep.T; R = keep.R; target = keep.target;
+        await reloadFree();
+        return;
+      }
       const g = gridPatient();
       const cho = base.pts.filter(p => p.tt !== '1');
       await setWho(g || cho[0] || null);
@@ -737,7 +855,7 @@
     const s = map.sum;
     const pct = s.active ? Math.round(s.dangNam * 100 / s.active) : 0;
     const notes = ruleNotes(who, T, R, tb, sug);
-    const blocked = notes.err.some(e => /nhập viện|rời giường phải/.test(e));
+    const blocked = notes.err.length > 0;
     const why = tb ? (list.find(x => x.b.key === tb.key) || { why: [] }).why : [];
 
     // --- Bước 1: bệnh nhân ---
@@ -761,34 +879,34 @@
         <label>Rời giường lúc <input type="datetime-local" class="gm-r" value="${R === Infinity ? '' : toInput(R)}"></label>
         <div class="gm-sub">${R === Infinity ? 'Để trống "Rời giường" = BN còn đang nằm.' : R > T ? `Thời gian nằm: <b>${dur(Math.round((R - T) / MIN))}</b>` : ''}</div></div>` : '';
 
-    // --- Bước 3: giường + nút ---
+    // --- Bước 3: giường + kế hoạch thực hiện ---
     let step3 = '';
+    lastFixes = [];
     if (who) {
       const sh = tb && tb.share;
       const alts = list.filter(x => !tb || x.b.key !== tb.key).slice(0, 5)
         .map(x => `<span class="gm-opt${x.b.share ? ' sh' : ''}" data-k="${x.b.key}" title="${esc(x.why.join(', '))}">${bedLabel(x.b)}${x.b.share ? ' ' + x.b.share.pct + '%' : ''}</span>`).join('');
-      const go = (cls, bn, text) => `<button type="button" class="gm-go gm-apply ${cls}" data-bn="${bn}" ${blocked || !tb ? 'disabled' : ''}>${text}</button>`;
-      let acts = '';
-      if (tb) {
-        const mainTxt = `${sh ? 'Cấp giường nằm chung' : tb.mine ? (R !== Infinity ? 'Cập nhật giờ rời giường' : 'Mở dòng giường hiện tại') : who.cur && who.cur.open ? 'Đổi sang giường' : 'Cấp giường'} ${bedLabel(tb)}${sh ? ` (${sh.pct}%)` : ''}`;
-        if (sh && sh.needUpdate.length) {
-          acts = `<div class="gm-substep">a) Chuyển BN đang nằm sang nằm chung ${sh.pct}%:</div>
-            ${sh.needUpdate.map(iv => iv.p.tt === '1'
-              ? `<button type="button" class="gm-go co gm-co" data-co="${esc(iv.p.key)}">Cập nhật ${esc(iv.p.ten)} → ${sh.pct}%</button>`
-              : `<div class="gm-sub" style="color:#b91c1c">${esc(iv.p.ten)} không còn ở tab ĐT có giường — sửa tay dòng giường của BN này.</div>`).join('')}
-            <div class="gm-sub">Extension mở form HIS của BN đó, chọn sẵn dòng giường, tick "Nằm cùng giường" ${sh.pct}% → bấm <b>Cập nhật</b>, rồi bấm ↻ Tải lại.</div>
-            <div class="gm-substep">b) Cấp giường cho BN mới:</div>${go('', 0, mainTxt)}`;
-        } else acts = go('', 0, mainTxt);
-        if (!tb.mine) acts += go('alt', 1, 'Cấp giường BAN NGÀY ' + bedLabel(tb));
-      }
+      const steps = tb ? buildSteps(who, tb, T, R) : [];
+      const nextIdx = steps.findIndex(s => !s.done);
+      const fixBtn = f => { if (!f) return ''; lastFixes.push(f); return ` <button type="button" class="gm-fix" data-fix="${lastFixes.length - 1}">${esc(f.label)}</button>`; };
+      const stepsHtml = steps.map((s, i) => `<div class="gm-ps${s.done ? ' done' : ''}">
+          <span class="n">${s.done ? '✓' : i + 1}</span>
+          <button type="button" class="gm-go gm-step-btn${i === nextIdx ? '' : ' alt'}${s.kind === 'co' || s.kind === 'endOld' ? ' co' : ''}" data-step="${i}" ${blocked || s.done ? 'disabled' : ''}>${esc(s.label)}</button>
+          ${clicked.has(s.id) && !s.done ? '<div class="gm-sub">Đã mở form HIS — lưu xong đóng form, sơ đồ tự cập nhật.</div>' : ''}
+        </div>`).join('');
       step3 = `<div class="gm-step"><h4><i>3</i>Giường${allowShare ? ' — <span style="color:#b45309">hết giường trống, nằm chung</span>' : ''}</h4>
         ${tb ? `<div class="gm-bedpick"><span class="big${sh ? ' sh' : ''}">${bedLabel(tb)}</span>
           <div class="gm-sub">${tb.key === best ? '★ Đề xuất tốt nhất' : 'Bạn đã chọn'}${why.length ? ' · ' + esc(why.join(', ')) : ''}</div></div>`
-          : '<div class="gm-sub" style="color:#b91c1c">Không còn giường nào (mỗi giường tối đa 3 người).</div>'}
-        ${alts ? `<div class="gm-alt">Giường khác: ${alts}<br>hoặc bấm giường ${allowShare ? 'viền cam' : 'xanh'} trên sơ đồ.</div>` : ''}
-        ${acts}
-        <ul class="gm-note">${notes.err.map(t => `<li class="e">${t}</li>`).join('')}${notes.warn.map(t => `<li class="w">${t}</li>`).join('')}${notes.info.map(t => `<li class="i">${t}</li>`).join('')}</ul>
-        <div class="gm-msg${msg ? ' ' + msg.cls : ''}">${msg ? esc(msg.text) : 'Bấm nút: extension mở form cấp giường HIS và điền sẵn giờ cấp / nhận / rời, loại + số giường, nằm cùng. Bạn chỉ kiểm tra rồi bấm <b>Cấp giường</b> (hoặc <b>Cập nhật</b>) trên form HIS.'}</div>
+          : `<div class="gm-iss e">⛔ Mọi giường đã đủ 3 người lúc ${fmt(T)}.${base.beds.some(b => Number(b.TRANGTHAI) !== 1)
+              ? ' Khoa có giường đang tắt (VD kê thêm T) — bật trong "Danh mục quản lý giường" (dm_quanlygiuong_vpc) rồi bấm ↻ Tải lại.'
+              : ' Cần bổ sung giường kê thêm (T) trong "Danh mục quản lý giường".'}</div>`}
+        ${alts ? `<div class="gm-alt">Giường khác: ${alts}</div>` : ''}
+        ${notes.err.map(e => `<div class="gm-iss e">⛔ ${e.t}${fixBtn(e.fix)}</div>`).join('')}
+        ${notes.warn.map(e => `<div class="gm-iss w">⚠ ${e.t}${fixBtn(e.fix)}</div>`).join('')}
+        ${steps.length ? `<div class="gm-plan">${stepsHtml}</div>` : ''}
+        ${tb && !tb.mine && !sh ? `<button type="button" class="gm-go alt gm-banngay" ${blocked ? 'disabled' : ''}>…hoặc cấp giường BAN NGÀY ${bedLabel(tb)}</button>` : ''}
+        ${notes.ok.length ? `<details class="gm-ok"><summary>✓ Đã kiểm tra ${notes.ok.length} quy định</summary><ul>${notes.ok.map(t => `<li>${esc(t)}</li>`).join('')}</ul></details>` : ''}
+        ${msg ? `<div class="gm-msg ${msg.cls}">${esc(msg.text)}</div>` : ''}
       </div>`;
     }
 
@@ -895,7 +1013,7 @@
   function onPanelChange(e) {
     if (e.target.matches('.gm-t')) {
       const v = fromInput(e.target.value);
-      if (v) { T = v; reloadFree(); }
+      if (v) { T = v; target = null; reloadFree(); } // đổi giờ → chọn lại giường tốt nhất tại giờ mới
     } else if (e.target.matches('.gm-r')) {
       const v = fromInput(e.target.value);
       R = v || Infinity;
@@ -915,29 +1033,29 @@
     if (ib) { openBedDlg(ib.dataset.k); return; }
     const pick = e.target.closest('.gm-opt, .gm-bed.free, .gm-bed.share.pick');
     if (pick) { target = pick.dataset.k; render(); return; }
-    const co = e.target.closest('.gm-co');
-    if (co && target && who) {
-      const bed = findBed(buildMap(base, free, who, T, R), target);
-      const p = base.pts.find(x => x.key === co.dataset.co);
-      if (!bed || !bed.share || !p) return;
-      co.disabled = true;
-      try {
-        await openHisForm(p, bed, T, Infinity, { muc: bed.share.muc, coOccupant: true });
-        document.getElementById('bhyt-gm-panel').classList.remove('open');
-      } catch (err) {
-        render({ cls: 'err', text: String(err && err.message || err) });
-      }
+    // Sửa 1 chạm (giờ nhận / giờ rời)
+    const fx = e.target.closest('.gm-fix');
+    if (fx) {
+      const f = lastFixes[Number(fx.dataset.fix)];
+      if (!f) return;
+      if (f.T != null) T = f.T; // giữ nguyên giường đang chọn
+      if ('R' in f) R = f.R == null ? Infinity : f.R;
+      if (f.T != null) await reloadFree(); else render();
       return;
     }
-    const ap = e.target.closest('.gm-apply');
-    if (ap && target && who) {
-      const map = buildMap(base, free, who, T, R);
-      const bed = findBed(map, target);
-      if (!bed) return;
-      ap.disabled = true;
+    // Thực hiện 1 bước / cấp giường ban ngày
+    const sb = e.target.closest('.gm-step-btn, .gm-banngay');
+    if (sb && target && who) {
+      const banngay = sb.classList.contains('gm-banngay');
+      const step = banngay ? lastSteps.find(s => s.kind === 'cap') : lastSteps[Number(sb.dataset.step)];
+      if (!step) return;
+      // Đổi giường / ghép: phải làm các bước trước rồi mới cấp giường mới
+      const idx = lastSteps.indexOf(step);
+      const pending = lastSteps.slice(0, idx).filter(s => !s.done && !clicked.has(s.id) && s.kind !== 'manual');
+      if (pending.length && !window.confirm(`Chưa làm bước: ${pending.map(s => s.label).join('; ')}.\nVẫn làm bước này trước?`)) return;
+      sb.disabled = true;
       try {
-        await openHisForm(who, bed, T, R, { banngay: ap.dataset.bn === '1' });
-        document.getElementById('bhyt-gm-panel').classList.remove('open');
+        await runStep(step, banngay);
       } catch (err) {
         render({ cls: 'err', text: String(err && err.message || err) });
       }
