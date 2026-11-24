@@ -928,7 +928,7 @@
       ${cho.length ? cho.map(chip).join('') : '<div class="gm-sub">Không có — có thể chọn BN trên lưới HIS để đổi giường.</div>'}</div></div>`;
 
     // --- Bước 2: thời gian ---
-    const step2 = who ? `<div class="gm-step gm-time"><h4><i>2</i>Thời gian nằm giường</h4>
+    const step2 = who ? `<div class="gm-step gm-time"><h4><i>2</i>Cấp mới giường ngày tiếp theo</h4>
         <label>Cấp giường lúc <span class="gm-dt"><input type="date" class="gm-td" value="${toInput(T).slice(0, 10)}"><input type="text" class="gm-tt" value="${toInput(T).slice(11, 16)}" maxlength="5" placeholder="HH:mm" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
         <label>Rời giường lúc <span class="gm-dt"><input type="date" class="gm-rd" value="${R === Infinity ? '' : toInput(R).slice(0, 10)}"><input type="text" class="gm-rt" value="${R === Infinity ? '' : toInput(R).slice(11, 16)}" maxlength="5" placeholder="HH:mm" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
         <div class="gm-sub">Giờ nhập theo <b>24 giờ</b> (00:30 = nửa đêm, 12:30 = trưa). Đây là giờ <b>cấp giường</b>; HIS tự đặt giờ nhận = giờ cấp + 1 phút.</div>
