@@ -2003,7 +2003,7 @@
     #bhyt-ksh-launch { position: fixed; left: 12px; bottom: 12px; z-index: 2147483000; padding: 6px 12px; font: bold 12px Arial;
       color: #fff; background: #0d47a1; border: 1px solid #08306b; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
     #bhyt-ksh-panel { display: none; flex-direction: column; position: fixed; left: 12px; bottom: 48px; z-index: 2147483000;
-      width: 380px; max-height: 75vh; background: #fff; border: 1px solid #0d47a1; border-radius: 6px; font: 12px Arial; color: #222;
+      width: 420px; max-height: 80vh; background: #fff; border: 1px solid #0d47a1; border-radius: 6px; font: 12px Arial; color: #222;
       box-shadow: 0 4px 16px rgba(0,0,0,.3); }
     #bhyt-ksh-panel .ksh-head { display: flex; justify-content: space-between; padding: 6px 10px; background: #0d47a1; color: #fff; border-radius: 5px 5px 0 0; }
     #bhyt-ksh-panel .ksh-x { cursor: pointer; }
@@ -2028,8 +2028,17 @@
     #bhyt-ksh-panel .ksh-rs-n { font-size: 11px; }
     #bhyt-ksh-panel .ksh-stop { background: #c62828; color: #fff; border-color: #8e0000; }
     #bhyt-ksh-panel button:disabled { opacity: .5; cursor: default; }
-    #bhyt-ksh-panel .ksh-status { padding: 0 10px; font-weight: bold; color: #0d47a1; }
-    #bhyt-ksh-panel .ksh-log { overflow: auto; max-height: 22vh; padding: 4px 10px 8px; white-space: pre-wrap; font-family: Consolas, monospace; font-size: 11px; }
+    /* Chỉ danh sách BN được co lại khi panel chạm 75vh; trạng thái + nhật ký luôn đủ cao, không đè lên nhau */
+    #bhyt-ksh-panel > * { flex-shrink: 0; }
+    #bhyt-ksh-panel > .ksh-list { flex-shrink: 1; }
+    #bhyt-ksh-panel .ksh-status { padding: 6px 10px 4px; font-size: 13.5px; line-height: 1.4; font-weight: bold; color: #0d47a1;
+      border-top: 1px solid #ddd; white-space: pre-wrap; word-break: break-word; }
+    #bhyt-ksh-panel .ksh-status:empty { display: none; }
+    #bhyt-ksh-panel .ksh-log { overflow: auto; min-height: 90px; max-height: 26vh; margin: 0 10px 8px; padding: 6px 8px;
+      white-space: pre-wrap; word-break: break-word; font-family: Consolas, monospace; font-size: 12.5px; line-height: 1.45;
+      background: #f7f9fc; border: 1px solid #dde3ee; border-radius: 4px; }
+    #bhyt-ksh-panel .ksh-log:empty { display: none; }
+    #bhyt-ksh-panel .ksh-rs-n { font-size: 12.5px; }
   `;
   (document.head || document.documentElement).appendChild(style);
 
