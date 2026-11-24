@@ -954,7 +954,36 @@
     };
   }
 
+  // Trang bảng kê (kiemtrabangke/kiemtrabangkenoitru/kiemtrabangkebannt): ngày vào đợt điều trị
+  // là ô "Đến khám" (VD: "08 giờ 44 ngày 10/11/2026") -> trả về "10/11/2026"
+  function extractBangKeDenKhamDate(scope) {
+    const root = scope || document;
+    const labels = Array.from(root.querySelectorAll('td, th, label, span, div'))
+      .filter(el => el.children.length <= 1 && /^\s*Đến\s*khám\s*:?\s*$/i.test(el.textContent || ''));
+    const dateRe = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
+    for (const lbl of labels) {
+      const inputs = Array.from(root.querySelectorAll('input:not([type="hidden"]), textarea'));
+      let checked = 0;
+      for (const inp of inputs) {
+        if (!(lbl.compareDocumentPosition(inp) & Node.DOCUMENT_POSITION_FOLLOWING)) continue;
+        const m = String(inp.value || '').match(dateRe);
+        if (m) return `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`;
+        if (++checked >= 2) break;
+      }
+      const cell = lbl.nextElementSibling;
+      const m2 = cell && String(cell.textContent || '').match(dateRe);
+      if (m2) return `${m2[1].padStart(2, '0')}/${m2[2].padStart(2, '0')}/${m2[3]}`;
+    }
+    return '';
+  }
+
   function extractNgayVaoFromContext(patientInfo, containerScope) {
+    // 0. Trang bảng kê: ưu tiên tuyệt đối thời gian "Đến khám" của đợt điều trị
+    if (typeof isBangKePage === 'function' && isBangKePage()) {
+      const denKham = extractBangKeDenKhamDate(document);
+      if (denKham) return denKham;
+    }
+
     // 1. Ưu tiên từ đối tượng patientInfo truyền vào
     if (patientInfo) {
       const v = patientInfo.ngayVao || patientInfo.ngayvao || patientInfo.ngay_vao || patientInfo.thoidiemTiepNhan || patientInfo.ngayKham;
