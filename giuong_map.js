@@ -640,7 +640,9 @@
     #bhyt-gm-panel .gm-chip.sel { background: #dbeafe; border-color: #2563eb; }
     #bhyt-gm-panel .gm-chip small { color: #64748b; margin-left: auto; white-space: nowrap; }
     #bhyt-gm-panel .gm-time label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; font-size: 13px; }
-    #bhyt-gm-panel .gm-time input { font: 13px Arial; padding: 4px 6px; border: 1px solid #94a3b8; border-radius: 4px; }
+    #bhyt-gm-panel .gm-time input { font: 14px Arial; padding: 4px 6px; border: 1px solid #94a3b8; border-radius: 4px; }
+    #bhyt-gm-panel .gm-time .gm-dt { display: inline-flex; gap: 4px; }
+    #bhyt-gm-panel .gm-time .gm-tt, #bhyt-gm-panel .gm-time .gm-rt { width: 58px; text-align: center; font-weight: bold; }
     #bhyt-gm-panel .gm-bedpick { display: flex; align-items: center; gap: 10px; }
     #bhyt-gm-panel .gm-bedpick .big { font-size: 26px; font-weight: bold; color: #0f766e; }
     #bhyt-gm-panel .gm-bedpick .big.sh { color: #b45309; }
@@ -909,8 +911,9 @@
 
     // --- Bước 2: thời gian ---
     const step2 = who ? `<div class="gm-step gm-time"><h4><i>2</i>Thời gian nằm giường</h4>
-        <label>Nhận giường lúc <input type="datetime-local" class="gm-t" value="${toInput(T)}"></label>
-        <label>Rời giường lúc <input type="datetime-local" class="gm-r" value="${R === Infinity ? '' : toInput(R)}"></label>
+        <label>Nhận giường lúc <span class="gm-dt"><input type="date" class="gm-td" value="${toInput(T).slice(0, 10)}"><input type="text" class="gm-tt" value="${toInput(T).slice(11, 16)}" maxlength="5" placeholder="HH:mm" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
+        <label>Rời giường lúc <span class="gm-dt"><input type="date" class="gm-rd" value="${R === Infinity ? '' : toInput(R).slice(0, 10)}"><input type="text" class="gm-rt" value="${R === Infinity ? '' : toInput(R).slice(11, 16)}" maxlength="5" placeholder="HH:mm" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
+        <div class="gm-sub">Giờ nhập theo <b>24 giờ</b> (00:30 = nửa đêm, 12:30 = trưa).</div>
         <div class="gm-sub">${R === Infinity ? 'Để trống "Rời giường" = BN còn đang nằm.' : R > T ? `Thời gian nằm: <b>${dur(Math.round((R - T) / MIN))}</b>` : ''}</div></div>` : '';
 
     // --- Bước 3: giường + kế hoạch thực hiện ---
@@ -1061,13 +1064,26 @@
   }
 
   function onPanelChange(e) {
-    if (e.target.matches('.gm-t')) {
-      const v = fromInput(e.target.value);
+    // Ngày (input date) + giờ 24h (ô chữ "HH:mm"; chấp nhận 7, 730, 07.30, 7h30)
+    const hm = s => {
+      const m = String(s || '').trim().match(/^(\d{1,2})(?:[:.hH ]?(\d{2}))?$/);
+      if (!m) return null;
+      const h = +m[1], mi = +(m[2] || 0);
+      return h < 24 && mi < 60 ? `${pad(h)}:${pad(mi)}` : null;
+    };
+    const P = document.getElementById('bhyt-gm-panel');
+    if (e.target.matches('.gm-td, .gm-tt')) {
+      const d = P.querySelector('.gm-td').value, t = hm(P.querySelector('.gm-tt').value);
+      const v = d && t ? fromInput(`${d}T${t}`) : null;
       if (v) { T = v; target = null; reloadFree(); } // đổi giờ → chọn lại giường tốt nhất tại giờ mới
-    } else if (e.target.matches('.gm-r')) {
-      const v = fromInput(e.target.value);
-      R = v || Infinity;
-      render();
+      else render({ cls: 'err', text: 'Giờ nhận không hợp lệ — nhập dạng HH:mm (24 giờ), VD 07:00.' });
+    } else if (e.target.matches('.gm-rd, .gm-rt')) {
+      const d = P.querySelector('.gm-rd').value, ts = P.querySelector('.gm-rt').value.trim();
+      if (!d && !ts) { R = Infinity; render(); return; }
+      const t = hm(ts || '00:00');
+      const v = d && t ? fromInput(`${d}T${t}`) : null;
+      if (v) { R = v; render(); }
+      else if (d && !t) render({ cls: 'err', text: 'Giờ rời không hợp lệ — nhập dạng HH:mm (24 giờ), VD 06:59.' });
     }
   }
 
