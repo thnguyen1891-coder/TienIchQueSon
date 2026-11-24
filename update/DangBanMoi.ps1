@@ -17,4 +17,4 @@ New-Item -ItemType Directory -Force -Path $Dest | Out-Null
 $rc = Start-Process robocopy.exe -ArgumentList @("`"$src`"", "`"$Dest`"", '/MIR', '/XF', 'manifest.json', '/XD', '.git', '.claude', '/R:3', '/W:2', '/NFL', '/NDL', '/NJH', '/NJS', '/NP') -NoNewWindow -Wait -PassThru
 if ($rc.ExitCode -ge 8) { Write-Host "Chep loi (robocopy $($rc.ExitCode))" -ForegroundColor Red; exit 1 }
 Copy-Item (Join-Path $src 'manifest.json') (Join-Path $Dest 'manifest.json') -Force
-Write-Host "Da dang ban $ver len $Dest (ban cu: $old). Cac may se tu cap nhat trong vong 30 phut." -ForegroundColor Green
+Write-Host "Da dang ban $ver len $Dest (ban cu: $old). Cac may se tu cap nhat trong vong 5 phut." -ForegroundColor Green

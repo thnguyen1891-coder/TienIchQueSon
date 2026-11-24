@@ -1,11 +1,11 @@
 # CAI 1 LAN tren moi may: bat tu dong cap nhat "Tien ich thong minh - TTYTKV Que Son".
 # - Chep script cap nhat vao %LOCALAPPDATA%\TienIchQueSon (khong can quyen Quan tri)
-# - Tao tac vu hen gio chay an moi 30 phut (va chay ngay 1 lan)
+# - Tao tac vu hen gio chay an moi 5 phut (va chay ngay 1 lan)
 # Tham so: -Source (neu bo trong thi doc update\nguon_cap_nhat.txt), -Target (mac dinh = thu muc tien ich chua file nay)
 param(
     [string]$Source = '',
     [string]$Target = (Split-Path -Parent $PSScriptRoot),
-    [int]$Minutes = 30
+    [int]$Minutes = 5
 )
 $ErrorActionPreference = 'Stop'
 $TaskName = 'TienIchQueSon_CapNhat'

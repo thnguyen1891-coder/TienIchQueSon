@@ -1,5 +1,5 @@
 # Cap nhat tu dong "Tien ich thong minh - TTYTKV Que Son"
-# Chay boi Task Scheduler (moi 30 phut). Lay ban moi tu NGUON (thu muc mang chung hoac file zip GitHub),
+# Chay boi Task Scheduler (moi 5 phut). Lay ban moi tu NGUON (thu muc mang chung hoac file zip GitHub),
 # neu phien ban (manifest.json) moi hon ban tren may thi chep de len thu muc tien ich.
 # manifest.json duoc chep SAU CUNG; tien ich tu thay phien ban moi va tu tai lai trong vong 1 phut.
 param([string]$ConfigPath = (Join-Path $PSScriptRoot 'config.json'))
