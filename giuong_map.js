@@ -602,11 +602,14 @@
     else await openHisForm(who, bed, T, R, { banngay: !!banngay });
     clicked.add(step.id);
     document.getElementById('bhyt-gm-panel').classList.remove('open');
-    watchHis();
+    // Chỉ mở lại sơ đồ khi kế hoạch còn bước chưa làm; xong hết thì để HIS dùng bình thường (sơ đồ che lưới BN)
+    const rest = lastSteps.slice(lastSteps.indexOf(step) + 1).filter(s => !s.done && s.kind !== 'manual' && !clicked.has(s.id));
+    watchHis(rest.length > 0);
   }
 
-  // Khi form HIS đóng (đã lưu hoặc huỷ) → mở lại sơ đồ, tải lại dữ liệu, giữ nguyên BN / giường / giờ đang làm
-  function watchHis() {
+  // Khi form HIS đóng (đã lưu hoặc huỷ) → tải lại dữ liệu, giữ nguyên BN / giường / giờ đang làm.
+  // reopen = true: mở lại sơ đồ để làm bước tiếp; false: chỉ cập nhật ngầm + nháy nút "Sơ đồ giường".
+  function watchHis(reopen) {
     if (watchTimer) clearInterval(watchTimer);
     const keep = { key: who && who.key, target, T, R };
     let closedCount = 0;
@@ -616,7 +619,11 @@
       if (open()) { closedCount = 0; return; }
       if (++closedCount < 2) return;
       clearInterval(watchTimer); watchTimer = null;
-      document.getElementById('bhyt-gm-panel').classList.add('open');
+      if (reopen) document.getElementById('bhyt-gm-panel').classList.add('open');
+      else {
+        const btn = document.getElementById('bhyt-gm-launch');
+        if (btn) { btn.classList.add('gm-pulse'); btn.title = 'Sơ đồ giường đã cập nhật — bấm để xem'; setTimeout(() => btn.classList.remove('gm-pulse'), 8000); }
+      }
       refresh(keep);
     }, 700);
   }
@@ -629,6 +636,8 @@
     #bhyt-gm-launch { position: fixed; left: 150px; bottom: 12px; z-index: 2147483000; padding: 6px 12px; font: bold 12px Arial;
       color: #fff; background: #0f766e; border: 0; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
     #bhyt-gm-launch:hover { background: #115e59; }
+    #bhyt-gm-launch.gm-pulse { animation: gmPulse 1s ease-in-out infinite; }
+    @keyframes gmPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(15,118,110,.7); } 50% { box-shadow: 0 0 0 8px rgba(15,118,110,0); } }
     #bhyt-gm-panel { display: none; position: fixed; inset: 14px; z-index: 2147483001; background: #f8fafc; color: #1f2937;
       border: 1px solid #94a3b8; border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.4); font: 14px Arial, sans-serif;
       flex-direction: column; overflow: hidden; }
@@ -820,6 +829,11 @@
       refresh();
     });
     panel.querySelector('.gm-x').addEventListener('click', () => panel.classList.remove('open'));
+    // Esc: đóng hộp thoại chi tiết, rồi đóng sơ đồ → trả lại màn hình HIS
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape' || !panel.classList.contains('open')) return;
+      if (panel.querySelector('.gm-dlg')) closeBedDlg(); else panel.classList.remove('open');
+    });
     panel.querySelector('.gm-reload').addEventListener('click', refresh);
     panel.addEventListener('click', onPanelClick);
     panel.addEventListener('change', onPanelChange);
