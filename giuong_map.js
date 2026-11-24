@@ -282,14 +282,22 @@
     const mine = !!target.mine;
     const start = mine ? who.cur.from : T;
 
-    // 1. Giờ nhận giường (HIS chặn giờ cấp ≤ giờ nhập viện; CHECKXML xét theo giờ vào/ra)
-    if (!mine) {
-      const lo = minT(who);
-      if (T < lo) err.push({ t: `Giờ nhận ${fmt(T)} phải sau ${fmt(lo - MIN)} (nhập viện / vào khoa / giường hiện tại).`, fix: { label: `Đặt ${fmt(lo)}`, T: lo } });
-      else ok.push('Giờ nhận sau giờ nhập viện và vào khoa');
-      if (T > now() + 60 * MIN) warn.push({ t: `Giờ nhận ${fmt(T)} ở tương lai.`, fix: { label: 'Đặt giờ hiện tại', T: Math.max(floorMin(now()), lo) } });
-    }
+    // 1. Giờ nhận giường (HIS chặn giờ cấp ≤ giờ nhập viện; CHECKXML xét theo giờ vào/ra) — áp dụng cả giường đang nằm
+    const loBase = minT({ ...who, cur: null }); // sau nhập viện + vào khoa
+    const lo = mine ? loBase : minT(who);       // đổi giường: còn phải sau lúc nhận giường hiện tại
+    const dT = defaultT(who);
+    if (T < loBase) {
+      err.push({ t: `Giờ nhận ${fmt(T)} trước giờ nhập viện / vào khoa của BN (${fmt(who.nhapvien)} / ${fmt(who.vaokhoa)}).`, fix: { label: `Đặt ${fmt(Math.max(dT, loBase))}`, T: Math.max(dT, loBase) } });
+    } else if (mine && T < who.cur.from - MIN) {
+      err.push({ t: `BN mới nằm giường ${lb} từ ${fmt(who.cur.from)} — giờ nhận ${fmt(T)} sớm hơn, sẽ chồng lên khoảng BN chưa có giường này.`, fix: { label: `Đặt ${fmt(dT)}`, T: dT } });
+    } else if (!mine && T < lo) {
+      err.push({ t: `Giờ nhận ${fmt(T)} phải sau lúc BN nhận giường hiện tại (${fmt(who.cur.from)}).`, fix: { label: `Đặt ${fmt(Math.max(dT, lo))}`, T: Math.max(dT, lo) } });
+    } else ok.push('Giờ nhận sau giờ nhập viện và vào khoa');
+    if (!mine && T > now() + 60 * MIN) warn.push({ t: `Giờ nhận ${fmt(T)} ở tương lai.`, fix: { label: 'Đặt giờ hiện tại', T: Math.max(floorMin(now()), lo) } });
     // 2. Giờ rời giường
+    if (R !== Infinity && R > now() + 60 * MIN) {
+      err.push({ t: `Giờ rời ${fmt(R)} ở tương lai — chỉ nhập khi BN đã thực sự rời giường (ra viện / chuyển giường / chuyển khoa).`, fix: { label: 'Xoá giờ rời', R: null } });
+    }
     if (R !== Infinity) {
       if (R <= start) err.push({ t: 'Giờ rời giường phải sau giờ nhận giường.', fix: { label: 'Xoá giờ rời', R: null } });
       else if (R - start <= 4 * 60 * MIN) warn.push({ t: `Nằm ${dur(Math.round((R - start) / MIN))} ≤ 4 giờ: không được tính tiền giường (TT22).`, confirm4h: true });
@@ -698,6 +706,7 @@
     #bhyt-gm-panel .gm-dlg h3 .st { font-size: 14px; font-weight: bold; padding: 3px 12px; border-radius: 14px; background: #fff7ed; color: #b45309; }
     #bhyt-gm-panel .gm-dlg h3 .st.free { background: #dcfce7; color: #15803d; }
     #bhyt-gm-panel .gm-dlg h3 .st.off { background: #f1f5f9; color: #64748b; }
+    #bhyt-gm-panel .gm-dlg h3 .st.mine { background: #dbeafe; color: #1d4ed8; }
     #bhyt-gm-panel .gm-dlg h3 .x { margin-left: auto; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 14px; font-size: 14px; background: #f8fafc; }
     #bhyt-gm-panel .gm-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: #fff; }
     #bhyt-gm-panel .gm-card.cur { border: 2px solid #0891b2; background: #f0fdff; }
@@ -1035,12 +1044,12 @@
       </div>`;
     }).join('');
     const canPick = b.state === 'free' || (b.state === 'share' && allowShare);
-    const stTxt = b.state === 'free' ? 'Trống' : b.state === 'share' && allowShare ? `Ghép được (${b.share.pct}%)` : b.state === 'off' ? 'Không hoạt động' : 'Có người';
+    const stTxt = b.mine ? `Giường ${esc(who.ten)} đang nằm` : b.state === 'free' ? 'Trống' : b.state === 'share' && allowShare ? `Ghép được (${b.share.pct}%)` : b.state === 'off' ? 'Không hoạt động' : 'Có người';
     const d = document.createElement('div');
     d.className = 'gm-dlg';
     d.innerHTML = `<div>
       <h3><span class="bigcode">🛏 ${lb}</span>
-        <span class="st ${b.state}">${stTxt}</span>
+        <span class="st ${b.mine ? 'mine' : b.state}">${stTxt}</span>
         <span style="font-weight:normal;font-size:14px;color:#64748b">${esc(b.ten || '')} · ${b.occ.length} BN đang nằm${b.occ.length > 1 ? ' (nằm chung)' : ''}</span>
         <span class="x">✕ Đóng</span></h3>
       ${cards || '<div style="margin-top:12px;color:#64748b;font-size:15px">Chưa có lượt nằm nào của BN đang ở khoa.</div>'}
