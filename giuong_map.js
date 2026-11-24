@@ -109,8 +109,14 @@
     });
     p.hist = runs;
     // BN đang có giường: đợt cuối là giường đang nằm, chưa rời (NGAYRA chỉ là giờ chốt ngày giường)
-    if (p.tt === '1' && runs.length) p.cur = { ...runs[runs.length - 1], open: true };
-    else if (p.tt === '1' && p.so) p.cur = { loai: 'H', so: p.so, from: p.vaokhoa, to: null, open: true, ngay: 0 };
+    // Không dựa vào tab HIS (BN còn nằm tới giờ chốt vẫn có thể bị xếp "ĐT không giường"): dòng cuối chưa có ngày ra
+    // hoặc ngày ra còn ở phía trước → BN đang nằm giường đó
+    const last = runs[runs.length - 1];
+    if (last && (p.tt === '1' || !last.to || last.to > now())) p.cur = { ...last, open: true };
+    // Danh sách tab khác chỉ có ngày vào khoa (00:00) → lấy giờ nhận giường đầu tiên trong ngày đó
+    if (runs.length && p.vaokhoa && D(p.vaokhoa).getHours() === 0 && D(p.vaokhoa).getMinutes() === 0
+      && toDateVN(p.vaokhoa) === toDateVN(runs[0].from)) p.vaokhoa = runs[0].from - MIN;
+    if (!p.cur && p.tt === '1' && p.so) p.cur = { loai: 'H', so: p.so, from: p.vaokhoa, to: null, open: true, ngay: 0 };
   }
 
   // ---------- Tải dữ liệu ----------
@@ -288,7 +294,9 @@
     const lo = mine ? loBase : minT(who);       // đổi giường: còn phải sau lúc nhận giường hiện tại
     const dT = defaultT(who);
     if (endOnly) {
-      ok.push(`BN rời giường ${lb} lúc ${fmt(R)}, trước giờ chốt ${fmt(who.cur.to)} → chỉ sửa giờ rời dòng hiện tại`);
+      ok.push(who.cur.to
+        ? `BN rời giường ${lb} lúc ${fmt(R)}, trước giờ chốt ${fmt(who.cur.to)} → chỉ sửa giờ rời dòng hiện tại`
+        : `Dòng giường ${lb} từ ${fmt(who.cur.from)} chưa có ngày ra → ghi ngày rời ${fmt(R)} vào dòng này`);
     } else if (T < loBase) {
       err.push({ t: `Giờ nhận ${fmt(T)} trước giờ nhập viện / vào khoa của BN (${fmt(who.nhapvien)} / ${fmt(who.vaokhoa)}).`, fix: { label: `Đặt ${fmt(Math.max(dT, loBase))}`, T: Math.max(dT, loBase) } });
     } else if (mine && T < who.cur.from - MIN) {
@@ -402,6 +410,7 @@
     if (!loaiSel) throw new Error('Form cấp giường chưa mở (BN thuộc khoa khác hoặc chưa có bệnh án chính thức?).');
     await sleep(700); // HIS nạp phòng/giường/ngày mặc định
     const soSel = document.getElementById(F('sostt_giuongbenh_vpc'));
+    { const old = document.getElementById('bhyt-gm-banner'); if (old) old.remove(); } // bỏ dòng nhắc của lần trước
     // Chống mở nhầm BN: tên trên form HIS phải khớp BN đang xét
     const nameOf = s => stripTags(s).normalize('NFC').toUpperCase().replace(/\s+/g, ' ').trim();
     const hoten = document.getElementById(F('hoten'));
@@ -478,6 +487,50 @@
     }
     if (!timesOk()) throw new Error('Không giữ được giờ cấp giường trên form HIS, kiểm tra và nhập tay.');
     flash(document.getElementById(banngay ? 'cgbn_bt_capgiuong_cv3176' : 'cp_bt_capgiuong_cv3176')); // dòng mới → bấm "Cấp giường"
+    // Nút "Cấp giường" của HIS không gửi ngày rời → sau khi lưu xong, chọn dòng mới, điền ngày rời, nhắc bấm "Cập nhật"
+    if (R !== Infinity && !banngay) followUpRoi(F, bed, T, R);
+    else banner(F, `Kiểm tra rồi bấm <b>Cấp giường</b>.`);
+  }
+
+  // Dòng nhắc ngay trên form HIS
+  function banner(F, html) {
+    const dlg = document.getElementById(F('hoten'))?.closest('.ui-dialog-content');
+    if (!dlg) return;
+    let b = dlg.querySelector('#bhyt-gm-banner');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'bhyt-gm-banner';
+      b.style.cssText = 'margin:4px 0 6px;padding:6px 10px;border-radius:6px;background:#fef3c7;border:1px solid #f59e0b;color:#78350f;font:bold 13px Arial';
+      dlg.insertBefore(b, dlg.firstChild);
+    }
+    b.innerHTML = '🛏 Sơ đồ giường: ' + html;
+  }
+
+  function followUpRoi(F, bed, T, R) {
+    const $ = jq();
+    banner(F, `Bước 1: bấm <b>Cấp giường</b>. Lưu xong extension tự chọn dòng mới và điền ngày rời ${fmtFull(R)} → Bước 2: bấm <b>Cập nhật</b>.`);
+    const g = $('#list_capgiuong_cv3176');
+    const dlgOpen = () => { const e = document.getElementById(F('hoten')); return e && e.offsetParent; };
+    const findNew = () => (g.jqGrid('getDataIDs') || []).find(id => {
+      const r = g.jqGrid('getRowData', id);
+      const from = parseVN(stripTags(r.NGAYVAO));
+      return from && Math.abs(from - T) < MIN && !stripTags(r.NGAYRA) && Number(stripTags(r.SO_GIUONG_TAI_KHOA_SO)) === bed.so;
+    });
+    const t0 = performance.now();
+    const timer = setInterval(async () => {
+      if (!dlgOpen() || performance.now() - t0 > 15 * 60000) { clearInterval(timer); return; }
+      const id = findNew();
+      if (!id) return;
+      clearInterval(timer);
+      g.jqGrid('setSelection', id, true); // HIS nạp dòng mới lên form
+      await sleep(700);
+      setField(F('ngayroigiuong'), toDateVN(R)); setField(F('gioroigiuong'), toTimeVN(R));
+      try { if ($.datepicker) $.datepicker._hideDatepicker(); } catch (_) {}
+      [F('ngayroigiuong'), F('gioroigiuong'), F('bt_capnhat')].forEach(x => flash(document.getElementById(x)));
+      const tr = document.querySelector(`#list_capgiuong_cv3176 tr.jqgrow[id="${CSS.escape(id)}"]`);
+      if (tr) { tr.style.outline = '2px solid #f59e0b'; setTimeout(() => { tr.style.outline = ''; }, 10000); }
+      banner(F, `Đã chọn dòng mới ${fmt(T)} và điền ngày rời <b>${fmtFull(R)}</b> → Bước 2: bấm <b>Cập nhật</b>.`);
+    }, 800);
   }
 
   // BN đang nằm → sửa dòng giường đang chứa thời điểm T sang "nằm chung" (đúng cách HIS: chọn dòng ở lưới dưới form,
@@ -522,6 +575,7 @@
     if (tr) { tr.style.outline = '2px solid #f59e0b'; setTimeout(() => { tr.style.outline = ''; }, 8000); }
     if (soSel && Number(soSel.value) !== bed.so) throw new Error('Đã chọn dòng giường nhưng số giường trên form không khớp — kiểm tra lại trước khi bấm Cập nhật.');
     const s = span(pick);
+    banner(F, `Đã chọn dòng giường ${fmt(s.from)}${roi.length ? `, điền ngày rời <b>${fmtFull(R)}</b>` : ''}${muc > 1 ? `, nằm chung ${muc === 3 ? '30%' : '50%'}` : ''} → bấm <b>Cập nhật</b>.`);
     return { info: `Đã nạp dòng giường ${fmt(s.from)} → ${s.to === Infinity ? '…' : fmt(s.to)}${muc > 1 ? ` và chọn nằm chung ${muc === 3 ? '30%' : '50%'}` : ''}${roi.length ? `, giờ rời ${fmt(R)}` : ''}. Bấm Cập nhật trên form HIS.` };
   }
 
@@ -546,7 +600,8 @@
 
   // Giường đang nằm + giờ rời nằm trong dòng hiện tại (BN rời trước giờ chốt) → chỉ sửa giờ rời, không tạo dòng mới
   function endOnlyOf(who, tb, R) {
-    return !!(tb && tb.mine && R !== Infinity && who && who.cur && who.cur.to && R <= who.cur.to);
+    // Dòng hiện tại chưa có ngày ra (vừa "Cấp giường" xong) → ghi ngày rời vào chính dòng đó, không cấp dòng mới
+    return !!(tb && tb.mine && R !== Infinity && who && who.cur && (!who.cur.to || R <= who.cur.to));
   }
 
   // Kế hoạch thực hiện cho phương án đã chọn: mỗi bước = 1 lần mở form HIS đã điền sẵn
@@ -930,7 +985,7 @@
     const cho = base.pts.filter(p => p.tt !== '1');
     const chip = p => `<div class="gm-chip${who && who.key === p.key ? ' sel' : ''}" data-k="${esc(p.key)}">
         <span style="color:${p.nam ? C_NAM : C_NU};font-size:16px">${p.nam ? '♂' : '♀'}</span> <b>${esc(p.ten)}</b>
-        <small>${TT_NAME[p.tt]} · ${fmt(p.vaokhoa)}</small></div>`;
+        <small>${p.cur && p.cur.open ? `đang nằm ${p.cur.loai}${pad3(p.cur.so)}${p.cur.to ? ' tới ' + fmt(p.cur.to) : ''}` : `${TT_NAME[p.tt]} · ${fmt(p.vaokhoa)}`}</small></div>`;
     const ptHtml = who ? `<div class="gm-pt"><span class="ic" style="color:${who.nam ? C_NAM : C_NU}">${who.nam ? '♂' : '♀'}</span>
         <div><div class="nm">${esc(who.ten)}</div>
         <div class="gm-sub">${who.nam ? 'Nam' : 'Nữ'}${who.tuoi ? ' · ' + esc(who.tuoi) + ' tuổi' : ''} · ${who.bh ? 'BHYT' : 'Viện phí'} · ${TT_NAME[who.tt] || ''}</div>
