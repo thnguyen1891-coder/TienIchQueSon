@@ -280,13 +280,16 @@
     if (!who || !target) return { err, warn, ok };
     const lb = `${target.loai}${pad3(target.so)}`;
     const mine = !!target.mine;
-    const start = mine ? who.cur.from : T;
+    const endOnly = endOnlyOf(who, target, R); // chỉ sửa giờ rời dòng hiện tại → giờ nhận không dùng
+    const start = endOnly ? who.cur.from : T;
 
     // 1. Giờ nhận giường (HIS chặn giờ cấp ≤ giờ nhập viện; CHECKXML xét theo giờ vào/ra) — áp dụng cả giường đang nằm
     const loBase = minT({ ...who, cur: null }); // sau nhập viện + vào khoa
     const lo = mine ? loBase : minT(who);       // đổi giường: còn phải sau lúc nhận giường hiện tại
     const dT = defaultT(who);
-    if (T < loBase) {
+    if (endOnly) {
+      ok.push(`BN rời giường ${lb} lúc ${fmt(R)}, trước giờ chốt ${fmt(who.cur.to)} → chỉ sửa giờ rời dòng hiện tại`);
+    } else if (T < loBase) {
       err.push({ t: `Giờ nhận ${fmt(T)} trước giờ nhập viện / vào khoa của BN (${fmt(who.nhapvien)} / ${fmt(who.vaokhoa)}).`, fix: { label: `Đặt ${fmt(Math.max(dT, loBase))}`, T: Math.max(dT, loBase) } });
     } else if (mine && T < who.cur.from - MIN) {
       err.push({ t: `BN mới nằm giường ${lb} từ ${fmt(who.cur.from)} — giờ nhận ${fmt(T)} sớm hơn, sẽ chồng lên khoảng BN chưa có giường này.`, fix: { label: `Đặt ${fmt(dT)}`, T: dT } });
@@ -410,8 +413,9 @@
     if (opts && opts.endOld) return markCoOccupant(F, bed, T, 1, R);
     if (opts && opts.coOccupant) return markCoOccupant(F, bed, T, muc, Infinity);
     // Giường BN đang nằm: không cấp lại (HIS tự tách dòng theo ngày y lệnh) → mở dòng hiện tại, điền giờ rời nếu có
-    if (bed.mine && !banngay) return markCoOccupant(F, bed, Infinity, 1, R);
-    const N = T + MIN; // HIS: nhận giường sau giờ cấp 1 phút
+    // BN rời giường trước giờ chốt dòng hiện tại → chỉ sửa giờ rời của dòng hiện tại
+    if (opts && opts.endOnly) return markCoOccupant(F, bed, Infinity, 1, R);
+    const N = T + MIN; // HIS tự đặt giờ nhận = giờ cấp + 1 phút (tham số HIS, hàm tinh_ngaygiuong_hgi_cv3176)
     const setTimes = () => {
       setField(F('ngaycapgiuong'), toDateVN(T)); setField(F('giocapgiuong'), toTimeVN(T));
       setField(F('ngaynhangiuong'), toDateVN(N)); setField(F('gionhangiuong'), toTimeVN(N));
@@ -445,7 +449,8 @@
       let opt = soSel && Array.from(soSel.options).find(o => Number(o.value) === bed.so);
       // Nằm chung: danh sách "Giường số" của HIS chỉ có giường trống, không bao giờ có giường đã có người
       // (đã kiểm chứng trên dữ liệu khoa Truyền nhiễm) → thêm giường ghép vào ô chọn như HIS tự làm khi nạp dòng giường cũ.
-      if (!opt && muc > 1 && soSel) {
+      // Giường BN đang nằm (cấp tiếp kỳ sau) cũng không có trong danh sách vì HIS coi BN vẫn đang nằm → thêm vào tương tự
+      if (!opt && (muc > 1 || bed.mine) && soSel) {
         opt = document.createElement('option');
         opt.value = String(bed.so);
         opt.textContent = bed.ten || `Giường ${bed.loai}${pad3(bed.so)}`;
@@ -472,6 +477,7 @@
       throw new Error(`HIS không cho chọn giường ${bed.loai}${pad3(bed.so)} lúc ${fmt(T)} (có thể vừa có BN khác nhận). Chọn giường khác trong form.`);
     }
     if (!timesOk()) throw new Error('Không giữ được giờ cấp giường trên form HIS, kiểm tra và nhập tay.');
+    flash(document.getElementById(banngay ? 'cgbn_bt_capgiuong_cv3176' : 'cp_bt_capgiuong_cv3176')); // dòng mới → bấm "Cấp giường"
   }
 
   // BN đang nằm → sửa dòng giường đang chứa thời điểm T sang "nằm chung" (đúng cách HIS: chọn dòng ở lưới dưới form,
@@ -538,12 +544,23 @@
   const clicked = new Set(); // bước đã mở form HIS
   let watchTimer = null;
 
+  // Giường đang nằm + giờ rời nằm trong dòng hiện tại (BN rời trước giờ chốt) → chỉ sửa giờ rời, không tạo dòng mới
+  function endOnlyOf(who, tb, R) {
+    return !!(tb && tb.mine && R !== Infinity && who && who.cur && who.cur.to && R <= who.cur.to);
+  }
+
   // Kế hoạch thực hiện cho phương án đã chọn: mỗi bước = 1 lần mở form HIS đã điền sẵn
   function buildSteps(who, tb, T, R) {
     const steps = [];
     const lb = bedLabel(tb);
     if (tb.mine) {
-      steps.push({ id: `mine|${who.key}|${R}`, kind: 'mine', label: R !== Infinity ? `Cập nhật giờ rời ${lb} lúc ${fmt(R)}` : `Mở dòng giường hiện tại ${lb}` });
+      if (endOnlyOf(who, tb, R)) {
+        steps.push({ id: `mine|${who.key}|${R}`, kind: 'mine', label: `Cập nhật giờ rời dòng hiện tại ${lb} lúc ${fmt(R)}` });
+      } else {
+        // Kỳ tiếp theo trên chính giường đang nằm: dòng mới từ T (sau giờ chốt dòng hiện tại)
+        steps.push({ id: `next|${who.key}|${T}|${R}`, kind: 'cap',
+          label: `Cấp tiếp giường ${lb} từ ${fmt(T)}${R !== Infinity ? ` đến ${fmt(R)}` : ''}` });
+      }
       return (lastSteps = steps);
     }
     if (who.cur && who.cur.open) {
@@ -580,6 +597,7 @@
     if ((step.kind === 'cap') && R !== Infinity && R - T <= 4 * 60 * MIN && R > T
       && !window.confirm(`BN nằm ${dur(Math.round((R - T) / MIN))} (≤ 4 giờ): theo TT22 không được tính tiền giường.\nVẫn cấp giường?`)) return;
     if (step.kind === 'endOld') await openHisForm(who, step.bed, T, T, { endOld: true });
+    else if (step.kind === 'mine') await openHisForm(who, bed, T, R, { endOnly: true });
     else if (step.kind === 'co') await openHisForm(step.p, bed, T, Infinity, { muc: bed.share.muc, coOccupant: true });
     else await openHisForm(who, bed, T, R, { banngay: !!banngay });
     clicked.add(step.id);
@@ -911,9 +929,9 @@
 
     // --- Bước 2: thời gian ---
     const step2 = who ? `<div class="gm-step gm-time"><h4><i>2</i>Thời gian nằm giường</h4>
-        <label>Nhận giường lúc <span class="gm-dt"><input type="date" class="gm-td" value="${toInput(T).slice(0, 10)}"><input type="text" class="gm-tt" value="${toInput(T).slice(11, 16)}" maxlength="5" placeholder="HH:mm" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
+        <label>Cấp giường lúc <span class="gm-dt"><input type="date" class="gm-td" value="${toInput(T).slice(0, 10)}"><input type="text" class="gm-tt" value="${toInput(T).slice(11, 16)}" maxlength="5" placeholder="HH:mm" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
         <label>Rời giường lúc <span class="gm-dt"><input type="date" class="gm-rd" value="${R === Infinity ? '' : toInput(R).slice(0, 10)}"><input type="text" class="gm-rt" value="${R === Infinity ? '' : toInput(R).slice(11, 16)}" maxlength="5" placeholder="HH:mm" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
-        <div class="gm-sub">Giờ nhập theo <b>24 giờ</b> (00:30 = nửa đêm, 12:30 = trưa).</div>
+        <div class="gm-sub">Giờ nhập theo <b>24 giờ</b> (00:30 = nửa đêm, 12:30 = trưa). Đây là giờ <b>cấp giường</b>; HIS tự đặt giờ nhận = giờ cấp + 1 phút.</div>
         <div class="gm-sub">${R === Infinity ? 'Để trống "Rời giường" = BN còn đang nằm.' : R > T ? `Thời gian nằm: <b>${dur(Math.round((R - T) / MIN))}</b>` : ''}</div></div>` : '';
 
     // --- Bước 3: giường + kế hoạch thực hiện ---
