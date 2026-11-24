@@ -290,6 +290,9 @@
       err.push({ t: `Giờ nhận ${fmt(T)} trước giờ nhập viện / vào khoa của BN (${fmt(who.nhapvien)} / ${fmt(who.vaokhoa)}).`, fix: { label: `Đặt ${fmt(Math.max(dT, loBase))}`, T: Math.max(dT, loBase) } });
     } else if (mine && T < who.cur.from - MIN) {
       err.push({ t: `BN mới nằm giường ${lb} từ ${fmt(who.cur.from)} — giờ nhận ${fmt(T)} sớm hơn, sẽ chồng lên khoảng BN chưa có giường này.`, fix: { label: `Đặt ${fmt(dT)}`, T: dT } });
+    } else if (mine && who.cur.to && T <= who.cur.to) {
+      // Dòng giường hiện tại kéo dài tới giờ chốt → nhận tiếp phải sau giờ chốt, nếu không 2 dòng chồng giờ (trùng ngày giường)
+      err.push({ t: `Dòng giường ${lb} hiện tại chạy tới ${fmtFull(who.cur.to)} — giờ nhận ${fmt(T)} chồng lên, bị tính trùng ngày giường. Nhận tiếp phải từ ${fmt(dT)}.`, fix: { label: `Đặt ${fmt(dT)}`, T: dT } });
     } else if (!mine && T < lo) {
       err.push({ t: `Giờ nhận ${fmt(T)} phải sau lúc BN nhận giường hiện tại (${fmt(who.cur.from)}).`, fix: { label: `Đặt ${fmt(Math.max(dT, lo))}`, T: Math.max(dT, lo) } });
     } else ok.push('Giờ nhận sau giờ nhập viện và vào khoa');
