@@ -38,6 +38,10 @@
   const toInput = ms => { const d = D(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
   const fromInput = s => { const m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime() : null; };
   const fmt = ms => { if (ms == null || !isFinite(ms)) return '…'; const d = D(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}`; };
+  const fmtFull = ms => { if (ms == null || !isFinite(ms)) return '…'; const d = D(ms); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  // Giờ ra của 1 khoảng nằm: BN đang nằm → giờ chốt ngày giường gần nhất HIS ghi (NGAYRA dòng cuối)
+  const raText = iv => iv.to === Infinity ? `đang nằm${iv.plan ? ` (chốt ngày giường ${fmtFull(iv.plan)})` : ''}` : fmtFull(iv.to);
+  const ivLine = iv => `• ${iv.p.ten} (${iv.p.nam ? 'Nam' : 'Nữ'}, ${iv.p.bh ? 'BH' : 'VP'}${iv.songuoi > 1 ? ', nằm chung ' + (iv.songuoi === 3 ? '30%' : '50%') : ''})\n   Nhận: ${fmtFull(iv.from)}\n   Ra:   ${raText(iv)}${iv.ngay ? `\n   Số ngày giường: ${iv.ngay}` : ''}`;
   const dur = m => m >= 1440 ? `${Math.floor(m / 1440)} ngày ${Math.round((m % 1440) / 60)} giờ` : m >= 60 ? `${Math.floor(m / 60)} giờ ${m % 60} phút` : `${m} phút`;
   const floorMin = ms => Math.floor(ms / MIN) * MIN;
 
@@ -156,7 +160,7 @@
     base.pts.forEach(p => {
       p.hist.forEach((r, i) => {
         const isCur = p.cur && i === p.hist.length - 1 && p.cur.open;
-        (by[r.loai + r.so] = by[r.loai + r.so] || []).push({ p, from: r.from, to: isCur ? Infinity : (r.to || r.from), cur: isCur, songuoi: r.songuoi || 1 });
+        (by[r.loai + r.so] = by[r.loai + r.so] || []).push({ p, from: r.from, to: isCur ? Infinity : (r.to || r.from), cur: isCur, songuoi: r.songuoi || 1, plan: r.to, ngay: r.ngay || 0 });
       });
       if (p.cur && !p.hist.length) (by[p.cur.loai + p.cur.so] = by[p.cur.loai + p.cur.so] || []).push({ p, from: p.cur.from || 0, to: Infinity, cur: true, songuoi: 1 });
     });
@@ -550,6 +554,19 @@
     #bhyt-gm-panel .gm-bed .badge.cur { background: #2563eb; }
     #bhyt-gm-panel .gm-bed .badge.sh { background: #f59e0b; }
     #bhyt-gm-panel .gm-warn { color: #b45309; font-size: 12px; margin-top: 8px; }
+    #bhyt-gm-panel .gm-ib { position: absolute; top: 4px; right: 6px; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: #e0f2fe;
+      color: #0369a1; font-size: 14px; font-weight: bold; cursor: pointer; z-index: 2; }
+    #bhyt-gm-panel .gm-ib:hover { background: #0369a1; color: #fff; }
+    #bhyt-gm-panel .gm-bed.busy, #bhyt-gm-panel .gm-bed.share:not(.pick) { cursor: zoom-in; }
+    #bhyt-gm-panel .gm-dlg { position: absolute; inset: 0; background: rgba(15,23,42,.45); z-index: 5; display: flex; align-items: center; justify-content: center; }
+    #bhyt-gm-panel .gm-dlg > div { background: #fff; border-radius: 10px; width: min(900px, 94%); max-height: 86%; overflow: auto; padding: 14px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+    #bhyt-gm-panel .gm-dlg h3 { margin: 0 0 4px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    #bhyt-gm-panel .gm-dlg h3 .x { margin-left: auto; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 5px; padding: 2px 10px; font-size: 13px; background: #f8fafc; }
+    #bhyt-gm-panel .gm-dlg table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    #bhyt-gm-panel .gm-dlg th, #bhyt-gm-panel .gm-dlg td { border: 1px solid #e2e8f0; padding: 5px 7px; text-align: left; vertical-align: top; }
+    #bhyt-gm-panel .gm-dlg th { background: #f1f5f9; }
+    #bhyt-gm-panel .gm-dlg tr.cur td { background: #ecfeff; }
+    #bhyt-gm-panel .gm-dlg tr.ov td { background: #fff1f2; }
     #bhyt-gm-panel .gm-load { padding: 40px; text-align: center; color: #64748b; font-size: 15px; }
     @media (max-width: 900px) { #bhyt-gm-panel .gm-main { grid-template-columns: 1fr; } #bhyt-gm-panel .gm-side { border-right: 0; border-bottom: 1px solid #e2e8f0; } }
     `;
@@ -771,11 +788,14 @@
           const names = b.occ.map(iv => esc(iv.p.ten.split(' ').slice(-2).join(' '))).join(', ');
           const since = b.occ.length ? `từ ${fmt(Math.min(...b.occ.map(iv => iv.from)))}` : '';
           const past = !b.occ.length && (map.ivs[b.key] || []).filter(iv => !iv.cur && iv.to >= T - 24 * 60 * MIN).sort((a, c) => c.to - a.to)[0];
-          const sub = b.occ.length ? `<div class="nm">${names}</div><div class="t">${since}</div>`
-            : past ? `<div class="t" title="${esc(past.p.ten)}">vừa rời ${fmt(past.to)}</div>` : '<div class="t">&nbsp;</div>';
-          const tip = [b.ten || ''].concat((map.ivs[b.key] || []).slice(-4).map(iv =>
-            `${iv.p.ten} (${iv.p.nam ? 'Nam' : 'Nữ'}, ${iv.p.bh ? 'BH' : 'VP'}${iv.songuoi > 1 ? ', nằm chung ' + (iv.songuoi === 3 ? '30%' : '50%') : ''}): ${fmt(iv.from)} → ${iv.to === Infinity ? 'đang nằm' : fmt(iv.to)}`)).join('\n');
-          return `<div class="${cls.join(' ')}" data-k="${b.key}" title="${esc(tip)}">${badge}${bedSvg(b)}${sub}</div>`;
+          const plan = b.occ.length === 1 && b.occ[0].plan ? `<div class="t">ra ${fmt(b.occ[0].plan)}</div>` : '';
+          const sub = b.occ.length ? `<div class="nm">${names}</div><div class="t">nhận ${since.replace(/^từ /, '')}</div>${plan}`
+            : past ? `<div class="t">vừa rời ${fmt(past.to)}</div>` : '<div class="t">&nbsp;</div>';
+          const ivAll = (map.ivs[b.key] || []).slice().sort((a, c) => (c.cur - a.cur) || (c.from - a.from));
+          const tip = [`${b.loai}${pad3(b.so)} — ${b.ten || ''}`].concat(ivAll.slice(0, 5).map(ivLine))
+            .concat(ivAll.length > 5 ? [`… còn ${ivAll.length - 5} lượt nữa`] : []).concat(ivAll.length ? ['(Bấm ⓘ để xem bảng chi tiết)'] : []).join('\n');
+          const info = ivAll.length ? `<span class="gm-ib" data-k="${b.key}" title="Xem chi tiết người nằm giường này">ⓘ</span>` : '';
+          return `<div class="${cls.join(' ')}" data-k="${b.key}" title="${esc(tip)}">${badge}${info}${bedSvg(b)}${sub}</div>`;
         }).join('')}</div>`;
     }).join('');
 
@@ -812,6 +832,43 @@
     body.querySelector('.gm-map').scrollTop = keepMap;
   }
 
+  // Hộp thoại chi tiết 1 giường: mọi lượt nằm (BN, giới, BH/VP, nằm chung, nhận, ra, số ngày)
+  function closeBedDlg() { const d = document.querySelector('#bhyt-gm-panel .gm-dlg'); if (d) d.remove(); }
+  function openBedDlg(key) {
+    if (!base || !free) return;
+    closeBedDlg();
+    const map = buildMap(base, free, who, T, R);
+    const b = findBed(map, key);
+    if (!b) return;
+    const allowShare = !suggest(map, who).ranked.length;
+    const ivs = (map.ivs[key] || []).slice().sort((a, c) => (c.cur - a.cur) || (c.from - a.from));
+    const ovKeys = new Set((b.cf || []).map(c => c.iv));
+    const rows = ivs.map(iv => {
+      const days = iv.ngay || (iv.to !== Infinity ? Math.max(1, Math.round((iv.to - iv.from) / (1440 * MIN))) : '');
+      return `<tr class="${iv.cur ? 'cur' : ''}${ovKeys.has(iv) ? ' ov' : ''}">
+        <td><b>${esc(iv.p.ten)}</b><div style="color:#64748b;font-size:11px">${esc(iv.p.sobenhan)} · ${TT_NAME[iv.p.tt] || ''}</div></td>
+        <td style="color:${iv.p.nam ? C_NAM : C_NU}">${iv.p.nam ? 'Nam' : 'Nữ'}${iv.p.tuoi ? ', ' + esc(iv.p.tuoi) : ''}</td>
+        <td>${iv.p.bh ? 'BH' : 'VP'}</td>
+        <td>${iv.songuoi > 1 ? (iv.songuoi === 3 ? 'Chung 30%' : 'Chung 50%') : 'Riêng 100%'}</td>
+        <td>${fmtFull(iv.from)}</td>
+        <td>${iv.to === Infinity ? `<b>Đang nằm</b>${iv.plan ? `<div style="color:#64748b;font-size:11px">chốt ngày giường ${fmtFull(iv.plan)}</div>` : ''}` : fmtFull(iv.to)}</td>
+        <td style="text-align:center">${days}</td></tr>`;
+    }).join('');
+    const canPick = b.state === 'free' || (b.state === 'share' && allowShare);
+    const d = document.createElement('div');
+    d.className = 'gm-dlg';
+    d.innerHTML = `<div>
+      <h3>🛏 Giường ${b.loai}${pad3(b.so)} <span style="font-weight:normal;font-size:13px;color:#64748b">${esc(b.ten || '')}</span><span class="x">✕ Đóng</span></h3>
+      <div style="font-size:13px">Hiện có <b>${b.occ.length}</b> BN đang nằm${b.occ.length > 1 ? ' (nằm chung)' : ''} · trạng thái lúc ${fmt(T)}: <b>${
+        b.state === 'free' ? 'trống' : b.state === 'share' && allowShare ? `ghép được (${b.share.pct}%)` : b.state === 'off' ? 'không hoạt động' : 'có người'}</b></div>
+      ${ivs.length ? `<table><thead><tr><th>Bệnh nhân</th><th>Giới, tuổi</th><th>Đối tượng</th><th>Nằm</th><th>Nhận giường</th><th>Ra giường</th><th>Số ngày giường</th></tr></thead><tbody>${rows}</tbody></table>`
+        : '<div style="margin-top:10px;color:#64748b">Chưa có lượt nằm nào của BN đang ở khoa.</div>'}
+      <div style="font-size:11px;color:#64748b;margin-top:6px">Dòng xanh: đang nằm. Dòng hồng: trùng giờ với thời gian nhận giường đang chọn (${fmt(T)}). Chỉ gồm BN còn ở khoa (ĐT có giường / Mới vào khoa / ĐT không giường); BN đã ra viện / chuyển khoa không hiện.</div>
+      ${canPick && who ? `<button type="button" class="gm-go gm-dpick" data-k="${b.key}" style="max-width:320px">Chọn giường ${b.loai}${pad3(b.so)} cho ${esc(who.ten)}</button>` : ''}
+    </div>`;
+    document.getElementById('bhyt-gm-panel').appendChild(d);
+  }
+
   function onPanelChange(e) {
     if (e.target.matches('.gm-t')) {
       const v = fromInput(e.target.value);
@@ -827,6 +884,12 @@
     if (!base) return;
     const chip = e.target.closest('.gm-chip');
     if (chip) { const p = base.pts.find(x => x.key === chip.dataset.k); if (p) setWho(p); return; }
+    if (e.target.closest('.gm-dlg .x') || e.target.classList.contains('gm-dlg')) { closeBedDlg(); return; }
+    const dPick = e.target.closest('.gm-dlg .gm-dpick');
+    if (dPick) { closeBedDlg(); target = dPick.dataset.k; render(); return; }
+    if (e.target.closest('.gm-dlg')) return;
+    const ib = e.target.closest('.gm-ib, .gm-bed.busy, .gm-bed.share:not(.pick)');
+    if (ib) { openBedDlg(ib.dataset.k); return; }
     const pick = e.target.closest('.gm-opt, .gm-bed.free, .gm-bed.share.pick');
     if (pick) { target = pick.dataset.k; render(); return; }
     const co = e.target.closest('.gm-co');
