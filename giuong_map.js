@@ -692,9 +692,33 @@
     #bhyt-gm-panel .gm-ib:hover { background: #0369a1; color: #fff; }
     #bhyt-gm-panel .gm-bed.busy, #bhyt-gm-panel .gm-bed.share:not(.pick) { cursor: zoom-in; }
     #bhyt-gm-panel .gm-dlg { position: absolute; inset: 0; background: rgba(15,23,42,.45); z-index: 5; display: flex; align-items: center; justify-content: center; }
-    #bhyt-gm-panel .gm-dlg > div { background: #fff; border-radius: 10px; width: min(900px, 94%); max-height: 86%; overflow: auto; padding: 14px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
-    #bhyt-gm-panel .gm-dlg h3 { margin: 0 0 4px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-    #bhyt-gm-panel .gm-dlg h3 .x { margin-left: auto; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 5px; padding: 2px 10px; font-size: 13px; background: #f8fafc; }
+    #bhyt-gm-panel .gm-dlg > div { background: #fff; border-radius: 12px; width: min(1100px, 95%); max-height: 90%; overflow: auto; padding: 18px 22px; box-shadow: 0 12px 40px rgba(0,0,0,.4); font-size: 15px; }
+    #bhyt-gm-panel .gm-dlg h3 { margin: 0 0 10px; font-size: 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    #bhyt-gm-panel .gm-dlg h3 .bigcode { font-size: 32px; font-weight: 800; color: #0f766e; letter-spacing: 1px; }
+    #bhyt-gm-panel .gm-dlg h3 .st { font-size: 14px; font-weight: bold; padding: 3px 12px; border-radius: 14px; background: #fff7ed; color: #b45309; }
+    #bhyt-gm-panel .gm-dlg h3 .st.free { background: #dcfce7; color: #15803d; }
+    #bhyt-gm-panel .gm-dlg h3 .st.off { background: #f1f5f9; color: #64748b; }
+    #bhyt-gm-panel .gm-dlg h3 .x { margin-left: auto; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 14px; font-size: 14px; background: #f8fafc; }
+    #bhyt-gm-panel .gm-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: #fff; }
+    #bhyt-gm-panel .gm-card.cur { border: 2px solid #0891b2; background: #f0fdff; }
+    #bhyt-gm-panel .gm-card.ov { border: 2px solid #f43f5e; background: #fff1f2; }
+    #bhyt-gm-panel .gm-card .hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    #bhyt-gm-panel .gm-card .hd .ic { font-size: 24px; line-height: 1; }
+    #bhyt-gm-panel .gm-card .hd .nm { font-size: 18px; font-weight: bold; }
+    #bhyt-gm-panel .gm-card .hd .tg { font-size: 13px; padding: 2px 9px; border-radius: 10px; background: #f1f5f9; color: #334155; }
+    #bhyt-gm-panel .gm-card .hd .tg.bh { background: #dbeafe; color: #1d4ed8; font-weight: bold; }
+    #bhyt-gm-panel .gm-card .hd .tg.vp { background: #fef3c7; color: #92400e; font-weight: bold; }
+    #bhyt-gm-panel .gm-card .hd .tg.chung { background: #ffe4e6; color: #be123c; font-weight: bold; }
+    #bhyt-gm-panel .gm-card .hd .sb { margin-left: auto; color: #64748b; font-size: 13px; }
+    #bhyt-gm-panel .gm-card .tm { display: flex; align-items: stretch; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+    #bhyt-gm-panel .gm-card .bx { background: #f8fafc; border-radius: 8px; padding: 8px 14px; min-width: 120px; }
+    #bhyt-gm-panel .gm-card .bx .l { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .3px; }
+    #bhyt-gm-panel .gm-card .bx .v { font-size: 22px; font-weight: bold; color: #0f172a; margin-top: 2px; white-space: nowrap; }
+    #bhyt-gm-panel .gm-card .bx .v.code { color: #0f766e; font-size: 26px; }
+    #bhyt-gm-panel .gm-card .bx .s { font-size: 13px; color: #475569; margin-top: 3px; }
+    #bhyt-gm-panel .gm-card .ar { align-self: center; font-size: 26px; color: #94a3b8; }
+    #bhyt-gm-panel .gm-card .dn { display: inline-block; background: #0891b2; color: #fff; padding: 2px 12px; border-radius: 6px; font-size: 20px; }
+    #bhyt-gm-panel .gm-card .ovt { color: #be123c; font-weight: bold; margin-top: 8px; }
     #bhyt-gm-panel .gm-dlg table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
     #bhyt-gm-panel .gm-dlg th, #bhyt-gm-panel .gm-dlg td { border: 1px solid #e2e8f0; padding: 5px 7px; text-align: left; vertical-align: top; }
     #bhyt-gm-panel .gm-dlg th { background: #f1f5f9; }
@@ -983,29 +1007,45 @@
     if (!b) return;
     const allowShare = !suggest(map, who).ranked.length;
     const ivs = (map.ivs[key] || []).slice().sort((a, c) => (c.cur - a.cur) || (c.from - a.from));
-    const ovKeys = new Set((b.cf || []).map(c => c.iv));
-    const rows = ivs.map(iv => {
+    // Trùng giờ chỉ có nghĩa khi đang xét 1 BN và giường này không phải giường BN đó đang nằm
+    const ovKeys = new Set(who && !b.mine ? (b.cf || []).map(c => c.iv) : []);
+    const lb = `${b.loai}${pad3(b.so)}`;
+    // Mỗi lượt nằm = 1 thẻ: mã giường, giờ nhận, giờ ra in to; đang nằm có nhãn nổi bật kèm giờ chốt ngày giường
+    const cards = ivs.map(iv => {
       const days = iv.ngay || (iv.to !== Infinity ? Math.max(1, Math.round((iv.to - iv.from) / (1440 * MIN))) : '');
-      return `<tr class="${iv.cur ? 'cur' : ''}${ovKeys.has(iv) ? ' ov' : ''}">
-        <td><b>${esc(iv.p.ten)}</b><div style="color:#64748b;font-size:11px">${esc(iv.p.sobenhan)} · ${TT_NAME[iv.p.tt] || ''}</div></td>
-        <td style="color:${iv.p.nam ? C_NAM : C_NU}">${iv.p.nam ? 'Nam' : 'Nữ'}${iv.p.tuoi ? ', ' + esc(iv.p.tuoi) : ''}</td>
-        <td>${iv.p.bh ? 'BH' : 'VP'}</td>
-        <td>${iv.songuoi > 1 ? (iv.songuoi === 3 ? 'Chung 30%' : 'Chung 50%') : 'Riêng 100%'}</td>
-        <td>${fmtFull(iv.from)}</td>
-        <td>${iv.to === Infinity ? `<b>Đang nằm</b>${iv.plan ? `<div style="color:#64748b;font-size:11px">chốt ngày giường ${fmtFull(iv.plan)}</div>` : ''}` : fmtFull(iv.to)}</td>
-        <td style="text-align:center">${days}</td></tr>`;
+      const col = iv.p.nam ? C_NAM : C_NU;
+      const ra = iv.to === Infinity
+        ? `<div class="v"><span class="dn">ĐANG NẰM</span></div>${iv.plan ? `<div class="s">Chốt ngày giường gần nhất: <b>${fmtFull(iv.plan)}</b></div>` : ''}`
+        : `<div class="v">${fmtFull(iv.to)}</div>`;
+      return `<div class="gm-card${iv.cur ? ' cur' : ''}${ovKeys.has(iv) ? ' ov' : ''}">
+        <div class="hd"><span class="ic" style="color:${col}">${iv.p.nam ? '♂' : '♀'}</span>
+          <span class="nm">${esc(iv.p.ten)}</span>
+          <span class="tg">${iv.p.nam ? 'Nam' : 'Nữ'}${iv.p.tuoi ? ' · ' + esc(iv.p.tuoi) + ' tuổi' : ''}</span>
+          <span class="tg ${iv.p.bh ? 'bh' : 'vp'}">${iv.p.bh ? 'BHYT' : 'Viện phí'}</span>
+          <span class="tg ${iv.songuoi > 1 ? 'chung' : ''}">${iv.songuoi > 1 ? (iv.songuoi === 3 ? 'Nằm chung 30%' : 'Nằm chung 50%') : 'Nằm riêng 100%'}</span>
+          <span class="sb">${esc(iv.p.sobenhan)}</span></div>
+        <div class="tm">
+          <div class="bx"><div class="l">Mã giường</div><div class="v code">${lb}</div></div>
+          <div class="bx"><div class="l">Giờ nhận giường</div><div class="v">${fmtFull(iv.from)}</div></div>
+          <div class="ar">→</div>
+          <div class="bx"><div class="l">Giờ ra giường</div>${ra}</div>
+          <div class="bx"><div class="l">Số ngày giường</div><div class="v">${days || '—'}</div></div>
+        </div>
+        ${ovKeys.has(iv) ? `<div class="s ovt">⚠ Trùng giờ với giờ nhận giường đang chọn (${fmtFull(T)})</div>` : ''}
+      </div>`;
     }).join('');
     const canPick = b.state === 'free' || (b.state === 'share' && allowShare);
+    const stTxt = b.state === 'free' ? 'Trống' : b.state === 'share' && allowShare ? `Ghép được (${b.share.pct}%)` : b.state === 'off' ? 'Không hoạt động' : 'Có người';
     const d = document.createElement('div');
     d.className = 'gm-dlg';
     d.innerHTML = `<div>
-      <h3>🛏 Giường ${b.loai}${pad3(b.so)} <span style="font-weight:normal;font-size:13px;color:#64748b">${esc(b.ten || '')}</span><span class="x">✕ Đóng</span></h3>
-      <div style="font-size:13px">Hiện có <b>${b.occ.length}</b> BN đang nằm${b.occ.length > 1 ? ' (nằm chung)' : ''} · trạng thái lúc ${fmt(T)}: <b>${
-        b.state === 'free' ? 'trống' : b.state === 'share' && allowShare ? `ghép được (${b.share.pct}%)` : b.state === 'off' ? 'không hoạt động' : 'có người'}</b></div>
-      ${ivs.length ? `<table><thead><tr><th>Bệnh nhân</th><th>Giới, tuổi</th><th>Đối tượng</th><th>Nằm</th><th>Nhận giường</th><th>Ra giường</th><th>Số ngày giường</th></tr></thead><tbody>${rows}</tbody></table>`
-        : '<div style="margin-top:10px;color:#64748b">Chưa có lượt nằm nào của BN đang ở khoa.</div>'}
-      <div style="font-size:11px;color:#64748b;margin-top:6px">Dòng xanh: đang nằm. Dòng hồng: trùng giờ với thời gian nhận giường đang chọn (${fmt(T)}). Chỉ gồm BN còn ở khoa (ĐT có giường / Mới vào khoa / ĐT không giường); BN đã ra viện / chuyển khoa không hiện.</div>
-      ${canPick && who ? `<button type="button" class="gm-go gm-dpick" data-k="${b.key}" style="max-width:320px">Chọn giường ${b.loai}${pad3(b.so)} cho ${esc(who.ten)}</button>` : ''}
+      <h3><span class="bigcode">🛏 ${lb}</span>
+        <span class="st ${b.state}">${stTxt}</span>
+        <span style="font-weight:normal;font-size:14px;color:#64748b">${esc(b.ten || '')} · ${b.occ.length} BN đang nằm${b.occ.length > 1 ? ' (nằm chung)' : ''}</span>
+        <span class="x">✕ Đóng</span></h3>
+      ${cards || '<div style="margin-top:12px;color:#64748b;font-size:15px">Chưa có lượt nằm nào của BN đang ở khoa.</div>'}
+      <div style="font-size:12px;color:#64748b;margin-top:8px">Chỉ gồm BN còn ở khoa (ĐT có giường / Mới vào khoa / ĐT không giường). "Chốt ngày giường" là giờ HIS tự tách dòng giường theo y lệnh, không phải giờ ra viện.</div>
+      ${canPick && who ? `<button type="button" class="gm-go gm-dpick" data-k="${b.key}" style="max-width:380px">Chọn giường ${lb} cho ${esc(who.ten)}</button>` : ''}
     </div>`;
     document.getElementById('bhyt-gm-panel').appendChild(d);
   }
