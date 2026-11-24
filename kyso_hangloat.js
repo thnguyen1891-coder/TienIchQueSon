@@ -2003,7 +2003,7 @@
     #bhyt-ksh-launch { position: fixed; left: 12px; bottom: 12px; z-index: 2147483000; padding: 6px 12px; font: bold 12px Arial;
       color: #fff; background: #0d47a1; border: 1px solid #08306b; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
     #bhyt-ksh-panel { display: none; flex-direction: column; position: fixed; left: 12px; bottom: 48px; z-index: 2147483000;
-      width: 420px; max-height: 80vh; background: #fff; border: 1px solid #0d47a1; border-radius: 6px; font: 12px Arial; color: #222;
+      width: 440px; max-width: calc(100vw - 24px); max-height: calc(100vh - 60px); overflow: hidden; box-sizing: border-box; background: #fff; border: 1px solid #0d47a1; border-radius: 6px; font: 12px Arial; color: #222;
       box-shadow: 0 4px 16px rgba(0,0,0,.3); }
     #bhyt-ksh-panel .ksh-head { display: flex; justify-content: space-between; padding: 6px 10px; background: #0d47a1; color: #fff; border-radius: 5px 5px 0 0; }
     #bhyt-ksh-panel .ksh-x { cursor: pointer; }
@@ -2012,10 +2012,12 @@
     #bhyt-ksh-panel .ksh-roles label { margin-left: 6px; }
     #bhyt-ksh-panel .ksh-bar { display: flex; align-items: center; gap: 8px; padding: 4px 10px; background: #f3f6fb; }
     #bhyt-ksh-panel .ksh-count { flex: 1; color: #555; }
-    #bhyt-ksh-panel .ksh-list { overflow: auto; max-height: 30vh; min-height: 60px; padding: 4px 10px; border-bottom: 1px solid #ddd; }
+    #bhyt-ksh-panel .ksh-list { overflow: auto; max-height: 40vh; min-height: 80px; padding: 4px 10px; border-bottom: 1px solid #ddd; }
     #bhyt-ksh-panel .ksh-list label { display: block; padding: 1px 0; white-space: nowrap; }
     #bhyt-ksh-panel .ksh-list span { display: inline-block; min-width: 72px; color: #666; }
-    #bhyt-ksh-panel .ksh-actions { display: flex; gap: 6px; padding: 6px 10px; }
+    #bhyt-ksh-panel .ksh-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px; }
+    #bhyt-ksh-panel .ksh-bar { flex-wrap: wrap; }
+    #bhyt-ksh-panel .ksh-list label { overflow: hidden; text-overflow: ellipsis; }
     #bhyt-ksh-panel button { padding: 3px 8px; font: bold 12px Arial; cursor: pointer; border-radius: 3px; border: 1px solid #999; background: #f5f5f5; }
     #bhyt-ksh-panel .ksh-start { background: #1d6f42; color: #fff; border-color: #145a32; }
     #bhyt-ksh-panel .ksh-skip { padding: 4px 10px; background: #fff8e1; border-bottom: 1px solid #ddd; color: #6d4c00; }
@@ -2034,7 +2036,7 @@
     #bhyt-ksh-panel .ksh-status { padding: 6px 10px 4px; font-size: 13.5px; line-height: 1.4; font-weight: bold; color: #0d47a1;
       border-top: 1px solid #ddd; white-space: pre-wrap; word-break: break-word; }
     #bhyt-ksh-panel .ksh-status:empty { display: none; }
-    #bhyt-ksh-panel .ksh-log { overflow: auto; min-height: 90px; max-height: 26vh; margin: 0 10px 8px; padding: 6px 8px;
+    #bhyt-ksh-panel .ksh-log { overflow: auto; min-height: 120px; max-height: 34vh; margin: 0 10px 8px; padding: 6px 8px;
       white-space: pre-wrap; word-break: break-word; font-family: Consolas, monospace; font-size: 12.5px; line-height: 1.45;
       background: #f7f9fc; border: 1px solid #dde3ee; border-radius: 4px; }
     #bhyt-ksh-panel .ksh-log:empty { display: none; }
