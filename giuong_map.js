@@ -999,7 +999,7 @@
     // --- Bước 2: thời gian ---
     const step2 = who ? `<div class="gm-step gm-time"><h4><i>2</i>Cấp mới giường ngày tiếp theo</h4>
         <label>Cấp giường lúc <span class="gm-dt"><input type="date" class="gm-td" value="${toInput(T).slice(0, 10)}"><input type="text" class="gm-tt" value="${toInput(T).slice(11, 16)}" maxlength="5" placeholder="HH:mm" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
-        <label>Rời giường lúc <span class="gm-dt"><input type="date" class="gm-rd" value="${R === Infinity ? '' : toInput(R).slice(0, 10)}"><input type="text" class="gm-rt" value="${R === Infinity ? '' : toInput(R).slice(11, 16)}" maxlength="5" placeholder="HH:mm" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
+        <label>Rời giường lúc <span class="gm-dt"><input type="date" class="gm-rd" value="${R === Infinity ? '' : toInput(R).slice(0, 10)}"><input type="text" class="gm-rt" value="${R === Infinity ? '' : toInput(R).slice(11, 16)}" maxlength="5" placeholder="${toInput(T - MIN).slice(11, 16)}" title="Giờ 24h, VD 07:00, 13:30, 00:30 (nửa đêm)"></span></label>
         <div class="gm-sub">Giờ nhập theo <b>24 giờ</b> (00:30 = nửa đêm, 12:30 = trưa). Đây là giờ <b>cấp giường</b>; HIS tự đặt giờ nhận = giờ cấp + 1 phút.</div>
         <div class="gm-sub">${R === Infinity ? 'Để trống "Rời giường" = BN còn đang nằm.' : R > T ? `Thời gian nằm: <b>${dur(Math.round((R - T) / MIN))}</b>` : ''}</div></div>` : '';
 
@@ -1167,7 +1167,8 @@
     } else if (e.target.matches('.gm-rd, .gm-rt')) {
       const d = P.querySelector('.gm-rd').value, ts = P.querySelector('.gm-rt').value.trim();
       if (!d && !ts) { R = Infinity; render(); return; }
-      const t = hm(ts || '00:00');
+      // Chưa gõ giờ rời → mặc định giờ cấp − 1 phút (cấp 07:00 → rời 06:59, đúng kiểu HIS tách giường theo ngày)
+      const t = hm(ts || toInput(T - MIN).slice(11, 16));
       const v = d && t ? fromInput(`${d}T${t}`) : null;
       if (v) { R = v; render(); }
       else if (d && !t) render({ cls: 'err', text: 'Giờ rời không hợp lệ — nhập dạng HH:mm (24 giờ), VD 06:59.' });
