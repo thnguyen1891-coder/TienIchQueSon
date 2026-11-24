@@ -957,9 +957,42 @@
   // Trang bảng kê (kiemtrabangke/kiemtrabangkenoitru/kiemtrabangkebannt): ngày vào đợt điều trị
   // là ô "Đến khám" (VD: "08 giờ 44 ngày 10/11/2026") -> trả về "10/11/2026"
   function extractBangKeDenKhamDate(scope) {
+    return extractBangKeLabelDate(/^\s*Đến\s*khám\s*:?\s*$/i, scope);
+  }
+
+  // Khoảng thời gian đợt điều trị trên trang bảng kê: "Đến khám" -> "Kết thúc" (chưa kết thúc thì tính đến hôm nay)
+  // Trả về { covers, ngayVao, ketThuc } nếu thẻ cũ [tuCu, denCu] phủ trọn đợt điều trị; null nếu không xác định được
+  function getOldCardEpisodeCoverage(tuCu, denCu) {
+    if (!(typeof isBangKePage === 'function' && isBangKePage())) return null;
+    const ngayVao = extractBangKeDenKhamDate(document);
+    if (!ngayVao) return null;
+    const ketThuc = extractBangKeLabelDate(/^\s*Kết\s*thúc\s*:?\s*$/i, document);
+    const tsVao = parseDateOnlyToTimestamp(ngayVao);
+    const tsRa = parseDateOnlyToTimestamp(ketThuc || getTodayDateStr());
+    const tsTu = parseDateOnlyToTimestamp(formatBhxhDate(tuCu) || tuCu);
+    const tsDen = parseDateOnlyToTimestamp(formatBhxhDate(denCu) || denCu);
+    if (!tsVao || !tsRa || !tsTu || !tsDen) return null;
+    return { covers: tsTu <= tsVao && tsRa <= tsDen, ngayVao, ketThuc };
+  }
+
+  // Mã 010 (thẻ hết hạn) nhưng thẻ đang dùng còn giá trị suốt đợt điều trị trên bảng kê
+  function isExpiredCardStillCoveringEpisode(d, note) {
+    try {
+      const info = detectNewBhytCard(d || {}, null, note || '');
+      let tuCu = info.tuCu, denCu = info.denCu;
+      const mHan = String(note || '').match(/Hạn\s*thẻ\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*-\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+      if (mHan && (!tuCu || !denCu)) { tuCu = tuCu || mHan[1]; denCu = denCu || mHan[2]; }
+      const cover = getOldCardEpisodeCoverage(tuCu, denCu);
+      return Boolean(cover && cover.covers);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function extractBangKeLabelDate(labelRe, scope) {
     const root = scope || document;
     const labels = Array.from(root.querySelectorAll('td, th, label, span, div'))
-      .filter(el => el.children.length <= 1 && /^\s*Đến\s*khám\s*:?\s*$/i.test(el.textContent || ''));
+      .filter(el => el.children.length <= 1 && labelRe.test(el.textContent || ''));
     const dateRe = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
     for (const lbl of labels) {
       const inputs = Array.from(root.querySelectorAll('input:not([type="hidden"]), textarea'));
@@ -1321,6 +1354,27 @@
               <b>Chủ thẻ đã được cấp mã thẻ BHYT mới:</b> <span class="bhyt-val-highlight-blue">${newCardInfo.theMoi}</span> 
               (Hạn thẻ: <b>${tuMoiStr || newCardInfo.tuMoi || '---'}</b> đến <b>${denMoiStr || newCardInfo.denMoi || '---'}</b>${displayNoiMoi ? '; Nơi KCBBĐ: ' + displayNoiMoi : ''}) 
               - <span class="bhyt-val-highlight-green">Đã có hiệu lực sử dụng hôm nay (${todayStr})</span>. Đã tự động điền thẻ mới vào form tiếp nhận.
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Thẻ cũ còn giá trị suốt đợt điều trị (Đến khám -> Kết thúc) -> không cảnh báo, giữ thẻ cũ cho đợt này
+    const oldCover = !validation.isLogical ? getOldCardEpisodeCoverage(newCardInfo.tuCu, newCardInfo.denCu) : null;
+    if (oldCover && oldCover.covers) {
+      return `
+        <div class="bhyt-success-dotdieutri">
+          <div class="bhyt-success-body">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <div class="bhyt-success-text">
+              <b>Thẻ BHYT đợt điều trị:</b> <span class="bhyt-val-highlight-green">${newCardInfo.theCu || '---'}</span>
+              (Giá trị: <b>${newCardInfo.tuCu || '---'}</b> đến <b>${newCardInfo.denCu || '---'}</b>)
+              - <span class="bhyt-val-highlight-green">Còn giá trị suốt đợt điều trị (${oldCover.ngayVao} → ${oldCover.ketThuc || 'nay'})</span>. Giữ nguyên thẻ cũ cho đợt này.
+              <br>Thẻ mới <span class="bhyt-val-highlight-blue">${newCardInfo.theMoi}</span> (từ <b>${newCardInfo.tuMoi || '---'}</b> đến <b>${newCardInfo.denMoi || '---'}</b>) dùng cho các đợt khám/điều trị sau.
             </div>
           </div>
         </div>
@@ -10402,6 +10456,8 @@
           severity: code === '003' ? 'error' : 'warning',
           message: luanvvMsg
         });
+      } else if (code === '010' && isExpiredCardStillCoveringEpisode(d, note)) {
+        // Thẻ hết hạn tại thời điểm tra cứu nhưng còn giá trị suốt đợt điều trị -> không phải sai lệch
       } else if (code === '010' || code === '110' || (code >= '120' && code <= '124') || code === '050') {
         discrepancies.push({
           field: 'sobhyt',
@@ -21345,7 +21401,8 @@
         // Chỉ thêm cảnh báo sai lệch trạng thái thẻ cho các lỗi nghiệp vụ thực tế của thẻ (hết hạn, khóa thẻ, thu hồi...)
         // TUYỆT ĐỐI không sinh cảnh báo sai lệch cho các lỗi xác thực kỹ thuật Cổng (401, lỗi token, lỗi kết nối...)
         const isAuthOrTechnicalError = code === '401' || code === '500' || /token/i.test(luanvvMsg) || /xác\s*thực/i.test(luanvvMsg) || /kết\s*nối/i.test(luanvvMsg);
-        if (!isAuthOrTechnicalError && code && code !== '000' && code !== '00') {
+        const stillCovers = code === '010' && isExpiredCardStillCoveringEpisode(d, ghiChuCong || d.ghiChu || '');
+        if (!isAuthOrTechnicalError && !stillCovers && code && code !== '000' && code !== '00') {
           discrepancies.push({
             field: 'trangthai',
             elementIds: ['sobhyt'],
