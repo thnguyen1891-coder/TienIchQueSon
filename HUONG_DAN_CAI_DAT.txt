@@ -75,3 +75,11 @@ LƯU Ý PHIÊN BẢN v1.3.14:
 - Sau khi kiểm tra BHYT hoặc khi chọn bệnh nhân từ danh sách tiếp nhận, ô #socmt tự động khóa lại (disable) an toàn.
 - Nút "Sửa CCCD" được tinh chỉnh kích thước chuẩn xác (cao 22px, bo góc 3px) cân đối hoàn hảo với ô #socmt.
 ================================================================================
+Xóa thư mục .git trong thư mục tiện ích. Lệnh này chỉ xóa phần lịch sử git trên máy đó, không xóa code tiện ích, và không ảnh hưởng GitHub hay máy gốc:
+Remove-Item -Recurse -Force "C:\APP\KiemTraTheBHYT_VNPT_HIS\.git"
+Chạy cập nhật ngay, không cần đợi 5 phút:
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\TienIchQueSon\CapNhatTienIch.ps1"; Get-Content "$env:LOCALAPPDATA\TienIchQueSon\capnhat.log" -Tail 3
+
+Kết quả sẽ có dòng Da cap nhat 2.3.12 -> 2.3.13.
+
+Mở chrome://extensions trên máy đó và kiểm tra thấy 2.3.13. Tiện ích tự tải lại trong khoảng 1 phút, hoặc bạn bấm ↻.
