@@ -64,15 +64,23 @@
     return parseMoney(foot.cells[idx].textContent);
   }
 
-  // "72,100.00" -> 72100 ; "1,754,949" -> 1754949 ; "72.100,50" -> 72101
+  // "72,100.00" -> 72100 ; "1,754,949" -> 1754949 ; "1,754,949.5999999964" -> 1754950 ; "72.100,50" -> 72101
   function parseMoney(s) {
     s = String(s || '').replace(/[^\d.,-]/g, '');
-    let dec = '';
-    const m = s.match(/^(.*)[.,](\d{1,2})$/);
-    if (m) { s = m[1]; dec = m[2]; }
-    const n = parseInt(s.replace(/[^\d-]/g, ''), 10);
-    if (isNaN(n)) return 0;
-    return Math.round(n + (dec ? Number('0.' + dec) : 0));
+    const lastDot = s.lastIndexOf('.'), lastComma = s.lastIndexOf(',');
+    if (lastDot >= 0 && lastComma >= 0) {
+      // có cả hai: dấu xuất hiện sau cùng là dấu thập phân
+      const decCh = lastDot > lastComma ? '.' : ',', grpCh = decCh === '.' ? ',' : '.';
+      s = s.split(grpCh).join('');
+      if (decCh === ',') s = s.replace(',', '.');
+    } else if (lastDot >= 0 || lastComma >= 0) {
+      const ch = lastDot >= 0 ? '.' : ',';
+      const grp = new RegExp('^-?\\d{1,3}(\\' + ch + '\\d{3})+$');
+      if (grp.test(s)) s = s.split(ch).join('');   // chỉ là dấu phân cách hàng nghìn
+      else s = s.replace(ch, '.');                    // là dấu thập phân
+    }
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : Math.round(n);
   }
 
   function readDateOut() {
