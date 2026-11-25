@@ -344,7 +344,8 @@
 #vpqr-box .ft button{padding:6px 12px;border:1px solid #1e5aa8;background:#1e5aa8;color:#fff;border-radius:4px;cursor:pointer}
 #vpqr-box .ft button.sec{background:#fff;color:#1e5aa8}
 #vpqr-box .err{color:#c00;margin-top:6px}
-#vpqr-taoma.vpqr-btn{margin-left:4px;width:auto !important;min-width:0 !important;max-width:none !important;padding:0 12px !important;white-space:nowrap !important;overflow:visible !important}`;
+#vpqr-taoma.vpqr-btn{margin-left:4px;width:auto !important;min-width:0 !important;max-width:none !important;padding:0 12px !important;white-space:nowrap !important;overflow:visible !important;background:#e3f4e6 !important;background-image:none !important;color:#0b6b2a !important;border:1px solid #2e9e4f !important;cursor:pointer}
+#vpqr-taoma.vpqr-btn:hover{background:#c8ebcf !important}`;
     document.head.appendChild(st);
   }
 
