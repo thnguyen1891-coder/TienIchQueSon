@@ -61,8 +61,18 @@
     if (idx < 0) idx = 4;
     const foot = box.querySelector('.ui-jqgrid-ftable tr.footrow');
     if (!foot || !foot.cells[idx]) return 0;
-    const n = parseInt(foot.cells[idx].textContent.replace(/[^\d-]/g, ''), 10);
-    return isNaN(n) ? 0 : n;
+    return parseMoney(foot.cells[idx].textContent);
+  }
+
+  // "72,100.00" -> 72100 ; "1,754,949" -> 1754949 ; "72.100,50" -> 72101
+  function parseMoney(s) {
+    s = String(s || '').replace(/[^\d.,-]/g, '');
+    let dec = '';
+    const m = s.match(/^(.*)[.,](\d{1,2})$/);
+    if (m) { s = m[1]; dec = m[2]; }
+    const n = parseInt(s.replace(/[^\d-]/g, ''), 10);
+    if (isNaN(n)) return 0;
+    return Math.round(n + (dec ? Number('0.' + dec) : 0));
   }
 
   function readDateOut() {
@@ -462,5 +472,5 @@
   obs.observe(document.documentElement, { childList: true, subtree: true });
 
   // để kiểm thử
-  window.__vpQr = { vietQrPayload, encodeQR, crc16 };
+  window.__vpQr = { vietQrPayload, encodeQR, crc16, parseMoney };
 })();
