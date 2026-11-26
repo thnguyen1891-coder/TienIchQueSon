@@ -1627,6 +1627,8 @@
   const RS_CODE = () => (IS_NOITRU ? 'XML4750_NT' : 'XML4750');
   // Ký lại khi: đã xóa trên cổng (deleted) hoặc không có trên cổng (absent). "paid" (đã đề nghị TT) -> không đẩy lại
   const rsReady = x => (x.gd === 'deleted' || x.gd === 'absent') && x.his !== 'done';
+  // Đã ký lại trên HIS nhưng B4 (cổng giám định) vẫn CHƯA thấy hồ sơ -> cho phép ký lại lần nữa (hỏi xác nhận)
+  const rsNotUp = x => (x.gd === 'deleted' || x.gd === 'absent') && x.his === 'done' && x.up === 'notup';
 
   function setVal(el, v) {
     if (!el) return;
@@ -1755,13 +1757,20 @@
     if (running) return;
     const q = await rsLoad();
     let todo = q.filter(x => rsForPage(x) && rsReady(x));
+    let again = false;
+    if (!todo.length) {
+      const nu = q.filter(x => rsForPage(x) && rsNotUp(x));
+      if (nu.length && (dry || confirm(`Không còn HS chờ ký lại, nhưng có ${nu.length} HS ĐÃ ký lại mà cổng giám định (B4) vẫn CHƯA thấy:\n\n` +
+          `${nu.slice(0, 15).map(x => `- ${x.name} (${x.maHSBA}, ra ${x.ngayRa})`).join('\n')}${nu.length > 15 ? '\n...' : ''}\n\n` +
+          `Hủy ký + ký lại XML 4750 LẦN NỮA cho các HS này?`))) { todo = nu; again = true; }
+    }
     if (limit) todo = todo.slice(0, limit);
     if (!todo.length) {
       alert(`Không có hồ sơ nào cần ký lại ở trang ${RS_PAGE_NAME[RS_PAGE]}.` + rsOtherPages(q, '\n\n'));
       return;
     }
     if (findKySoScope()) { alert('Hãy đóng cửa sổ Ký số đang mở trước.'); return; }
-    if (!dry && !confirm(`HỦY KÝ + KÝ LẠI "01. XML ... BHXH 4750" cho ${todo.length} hồ sơ:\n\n${todo.slice(0, 15).map(x => `- ${x.name} (${x.maHSBA}, ra ${x.ngayRa})`).join('\n')}${todo.length > 15 ? '\n...' : ''}\n\nTiếp tục?`)) return;
+    if (!dry && !again && !confirm(`HỦY KÝ + KÝ LẠI "01. XML ... BHXH 4750" cho ${todo.length} hồ sơ:\n\n${todo.slice(0, 15).map(x => `- ${x.name} (${x.maHSBA}, ra ${x.ngayRa})`).join('\n')}${todo.length > 15 ? '\n...' : ''}\n\nTiếp tục?`)) return;
     running = true; stopRequested = false; ui.setRunning(true);
     ui.log(`🔁 ${dry ? 'CHẠY THỬ (1 HS, không hủy)' : 'Ký lại XML 4750'}: ${todo.length} hồ sơ`);
     try {
@@ -1778,6 +1787,7 @@
         ui.log(`  ${r.st === 'done' ? '✅' : r.st === 'dry' ? '🔎' : '❌'} ${r.note}`);
         if (dry) break;
         x.his = r.st; x.hisNote = r.st === 'done' ? '' : r.note;
+        if (r.st === 'done' && again) { x.up = ''; x.upNote = ''; } // B4 kiểm tra lại từ đầu
         await rsSave(q);
       }
       if (!dry) {
@@ -1934,7 +1944,9 @@
         const n = q.filter(x => rsForPage(x) && rsReady(x)).length;
         const wait = q.filter(x => rsForPage(x) && !['deleted', 'absent', 'paid'].includes(x.gd)).length;
         const paid = q.filter(x => rsForPage(x) && x.gd === 'paid').length;
+        const notUp = q.filter(x => rsForPage(x) && rsNotUp(x)).length;
         $('.ksh-rs-n').textContent = `${n} HS chờ ký lại ở trang này` +
+          (notUp ? ` · ${notUp} đã ký lại nhưng cổng chưa thấy (bấm nút để ký lại lần nữa)` : '') +
           (wait ? ` · ${wait} chưa xử lý trên cổng` : '') + (paid ? ` · ${paid} đã ĐNTT (bỏ qua)` : '') + rsOtherPages(q, ' · ');
       };
       launch.addEventListener('click', rsCount);
