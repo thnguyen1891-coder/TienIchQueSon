@@ -97,10 +97,10 @@
   }
   function readRows() {
     const root = document.getElementById('gvDanhSachHoSo');
-    const ix = { ten: headerIndex('Họ và tên'), ra: headerIndex('Ngày ra'), loai: headerIndex('Loại khám chữa bệnh'), mabn: headerIndex('Mã bệnh nhân'), xoa: headerIndex('Xóa'), gui: headerIndex('Ngày gửi hồ sơ'), tt: headerIndex('TT') };
+    const ix = { ten: headerIndex('Họ và tên'), ra: headerIndex('Ngày ra'), loai: headerIndex('Loại khám chữa bệnh'), mabn: headerIndex('Mã bệnh nhân'), xoa: headerIndex('Xóa'), gui: headerIndex('Ngày gửi hồ sơ'), tt: headerIndex('TT'), dntt: headerIndex('Đề nghị TT'), ks: headerIndex('Trạng thái ký số') };
     return Array.from(root.querySelectorAll('tr[class*="dxgvDataRow"]')).map(tr => {
       const c = tr.cells, tx = i => (i >= 0 && c[i] ? c[i].textContent.trim() : '');
-      return { tr, ten: tx(ix.ten), ra: tx(ix.ra), loai: tx(ix.loai), mabn: tx(ix.mabn), gui: tx(ix.gui), del: ix.xoa >= 0 && c[ix.xoa] ? c[ix.xoa].querySelector('img[onclick*="XoaHS"]') : null };
+      return { tr, ten: tx(ix.ten), ra: tx(ix.ra), loai: tx(ix.loai), mabn: tx(ix.mabn), gui: tx(ix.gui), dntt: tx(ix.dntt), ks: tx(ix.ks), del: ix.xoa >= 0 && c[ix.xoa] ? c[ix.xoa].querySelector('img[onclick*="XoaHS"]') : null };
     });
   }
   // Loại KCB checkxml -> chữ trên cổng
@@ -268,7 +268,7 @@
   }
 
   // ---- B4: kiểm tra hồ sơ đã ký lại (HIS) đã lên cổng chưa - CHỈ ĐỌC ----
-  //  ✅ up    : có hồ sơ "Hồ sơ đúng - Chưa đề nghị TT" khớp (Họ tên + Ngày ra + Loại KCB)
+  //  ✅ up    : có hồ sơ "Hồ sơ đúng - Chưa đề nghị TT" khớp (Họ tên + Ngày ra + Loại KCB), hoặc đã "Đã đề nghị thanh toán"
   //  ⚠ upbad : có trên cổng nhưng ở trạng thái khác (lỗi / cảnh báo...) -> xem trên cổng
   //  ⏳ notup : chưa thấy -> chờ thêm rồi kiểm tra lại
   async function checkUp(ui) {
@@ -294,6 +294,12 @@
             if (pass === 'ok') {
               if (hit.length) { x.up = 'up'; x.upNote = `Đã lên cổng${hit[0].gui ? ' (gửi ' + hit[0].gui + ')' : ''}`; ui.log(`✅ ${x.name}: ${x.upNote}`); }
               else x.up = 'notup';
+            } else if (hit.some(r => /Đã đề nghị/i.test(r.dntt))) {
+              // HS đã lên cổng và đã được đề nghị thanh toán -> coi là đã lên cổng
+              const r = hit.find(rr => /Đã đề nghị/i.test(rr.dntt));
+              x.up = 'up';
+              x.upNote = `Đã lên cổng - ${r.dntt}${r.ks ? ' (' + r.ks + ')' : ''}${r.gui ? ', gửi ' + r.gui : ''}`;
+              ui.log(`✅ ${x.name}: ${x.upNote}`);
             } else if (hit.length) {
               x.up = 'upbad'; x.upNote = 'Có trên cổng nhưng KHÔNG ở "Hồ sơ đúng - Chưa đề nghị TT" -> xem trên cổng';
               ui.log(`⚠ ${x.name}: ${x.upNote}`);
