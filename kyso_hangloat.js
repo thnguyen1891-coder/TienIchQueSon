@@ -1638,7 +1638,12 @@
   async function rsFindPatient(x, log) {
     const d = (x.ngayRa.match(/\d{2}\/\d{2}\/\d{4}/) || [])[0];
     if (!d) throw new Error('Thiếu ngày ra');
-    const tries = [[d, d], [d, todayVN()]]; // không thấy thì mở rộng tới hôm nay
+    // Lưới nội trú có thể lọc theo NGÀY VÀO (checkxml chỉ có ngày ra) -> không thấy thì lùi 60 ngày trước ngày ra
+    const [dd, mm, yy] = d.split('/').map(Number);
+    const back = new Date(yy, mm - 1, dd);
+    back.setDate(back.getDate() - 60);
+    const backStr = `${String(back.getDate()).padStart(2, '0')}/${String(back.getMonth() + 1).padStart(2, '0')}/${back.getFullYear()}`;
+    const tries = [[d, d], [d, todayVN()], [backStr, todayVN()]];
     for (const [tu, den] of tries) {
       setVal(document.getElementById('tungay'), tu);
       setVal(document.getElementById('denngay'), den);
