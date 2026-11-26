@@ -108,6 +108,8 @@
     const a = norm(cx), b = norm(gd);
     if (/BAN NGÀY/.test(a)) return /BAN NGÀY|ĐIỀU TRỊ BN/.test(b);
     if (/NỘI TRÚ/.test(a)) return /NỘI TRÚ|ĐIỀU TRỊ NT/.test(b) && !/BAN NGÀY|ĐIỀU TRỊ BN/.test(b);
+    // "Điều trị ngoại trú" (checkxml): cổng có thể ghi "Điều trị ngoại trú" (hoặc "Khám bệnh" như trước) - chỉ xóa khi khớp đúng 1 HS
+    if (/(ĐIỀU TRỊ|ĐT)\s*NGOẠI|ĐIỀU TRỊ NGT|ĐTNGT/.test(a)) return /NGOẠI|ĐIỀU TRỊ NGT|ĐTNGT|KHÁM BỆNH/.test(b) && !/NỘI TRÚ|BAN NGÀY/.test(b);
     if (/NGOẠI TRÚ|KHÁM/.test(a)) return /KHÁM BỆNH/.test(b); // "Ngoại trú" (checkxml) = "Khám bệnh" (cổng)
     return a === b;
   }

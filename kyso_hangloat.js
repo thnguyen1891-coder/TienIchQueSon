@@ -1607,11 +1607,17 @@
   const RS_KEY = 'bhytResyncQueue';
   const rsLoad = () => new Promise(r => chrome.storage.local.get(RS_KEY, d => r(d[RS_KEY] || [])));
   const rsSave = q => new Promise(r => chrome.storage.local.set({ [RS_KEY]: q }, r));
-  // Trang ký theo loại KCB (checkxml): Ngoại trú -> kiemtrabangke;
-  // Nội trú và Điều trị nội trú ban ngày -> kiemtrabangkenoitru (trang kiemtrabangkebannt không dùng cho đồng bộ lại)
+  // Trang ký theo loại KCB (checkxml): Ngoại trú (khám bệnh) -> kiemtrabangke;
+  // Điều trị ngoại trú -> kiemtrabangkebannt (01. XML BANT BHXH 4750);
+  // Nội trú và Điều trị nội trú ban ngày -> kiemtrabangkenoitru
   const RS_PAGE = /kiemtrabangkebannt/i.test(location.pathname) ? 'bannt' : IS_NOITRU ? 'noitru' : 'ngoaitru';
-  const rsKind = x => /NGOẠI TRÚ|KHÁM/i.test(x.loai || '') ? 'ngoaitru' : 'noitru';
-  const RS_PAGE_NAME = { noitru: 'kiemtrabangkenoitru (nội trú + ĐT nội trú ban ngày)', ngoaitru: 'kiemtrabangke (ngoại trú)', bannt: 'kiemtrabangkebannt' };
+  const rsKind = x => {
+    const l = String(x.loai || '');
+    if (/(ĐIỀU TRỊ|ĐT)\s*NGOẠI|ĐIỀU TRỊ NGT|ĐTNGT/i.test(l)) return 'bannt';
+    if (/NGOẠI TRÚ|KHÁM/i.test(l)) return 'ngoaitru';
+    return 'noitru';
+  };
+  const RS_PAGE_NAME = { noitru: 'kiemtrabangkenoitru (nội trú + ĐT nội trú ban ngày)', ngoaitru: 'kiemtrabangke (ngoại trú)', bannt: 'kiemtrabangkebannt (ĐT ngoại trú)' };
   const rsForPage = x => rsKind(x) === RS_PAGE;
   // "Còn N HS ở trang ..." cho các loại KCB thuộc trang khác
   const rsOtherPages = (q, sep) => Object.keys(RS_PAGE_NAME).filter(k => k !== RS_PAGE).map(k => {
