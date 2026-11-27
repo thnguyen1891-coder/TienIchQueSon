@@ -162,6 +162,17 @@
     if (!onUrl(it)) { location.href = urlFor(it); return; }
 
     const stage = it.stage || 'unmark';
+    // Thông báo (alert) của trang bị ksk_csdlyte_main.js chặn khi đang chạy → đọc lại để biết Cổng báo gì
+    let lastAlert = '';
+    try { lastAlert = sessionStorage.getItem('__tiq_ksk_lastalert') || ''; sessionStorage.removeItem('__tiq_ksk_lastalert'); } catch (e) {}
+    if (lastAlert) {
+      await updateItem(it, { why: 'trang báo: ' + lastAlert.slice(0, 160) });
+      it.why = 'trang báo: ' + lastAlert.slice(0, 160);
+      if (/lỗi|thất bại|không thể|không hợp lệ|thiếu|chưa ký|từ chối|error/i.test(lastAlert) && !/Đã gửi/i.test(lastAlert)) {
+        await updateItem(it, { status: 'error', note: `bước ${stage}: ${lastAlert.slice(0, 200)}`, tries: 0 });
+        location.reload(); return;
+      }
+    }
     // Đếm số lần thử THEO TỪNG BƯỚC; ghi lại lý do lần thử trước để biết kẹt vì sao.
     const tries = (it.tries || 0) + 1;
     if (tries > MAX_TRIES) {
@@ -233,9 +244,10 @@
       }
       const lt = [...row.querySelectorAll('button')].find((b) => ((b.title || '') + (b.getAttribute('aria-label') || '')).includes('Liên thông hồ sơ #' + it.id));
       if (!lt) return retry('không thấy nút Liên thông của hồ sơ');
-      await updateItem(it, { why: 'đã bấm Liên thông, chờ Cổng nhận' });
+      if (!it.why || !/^trang báo/.test(it.why)) await updateItem(it, { why: `đã bấm Liên thông ${tries} lần, hồ sơ chưa chuyển "Chờ Cổng ETL"` });
       lt.click();
-      setTimeout(() => location.reload(), 6000);
+      // Chờ lâu hơn để Cổng kịp nhận (trang thường tự tải lại khi đẩy xong)
+      setTimeout(() => location.reload(), 10000);
     }
   }
 
