@@ -14,4 +14,16 @@
     } catch (e) { /* bỏ qua */ }
     return origConfirm.call(window, msg);
   };
+  // Thông báo (alert) chỉ để báo tin, vd "Đã gửi lên Cổng, đang chờ Cổng xử lý." → khi đang chạy thì
+  // không hiện hộp (tránh dừng tiến trình), ghi lại vào sessionStorage để bảng điều khiển hiển thị.
+  const origAlert = window.alert;
+  window.alert = function (msg) {
+    try {
+      if (sessionStorage.getItem(FLAG) === '1') {
+        sessionStorage.setItem('__tiq_ksk_lastalert', String(msg || '').slice(0, 300));
+        return;
+      }
+    } catch (e) { /* bỏ qua */ }
+    return origAlert.call(window, msg);
+  };
 })();
