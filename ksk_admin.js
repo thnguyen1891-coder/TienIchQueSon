@@ -96,9 +96,11 @@
     if (!(await filterByName(it.name))) return { ok: false, msg: 'không lọc được theo tên' };
     const row = readRows().find((r) => r.name === it.name && r.year === it.year && r.ngayKham === it.ngayKham && (!it.cccd || r.cccd === it.cccd) && /Đang thực hiện/i.test(r.status));
     if (!row) {
-      // Danh sách của Cổng cập nhật chậm; nếu đã gửi lệnh xóa trước đó mà nay không còn → coi như đã xóa
-      if (it.delSent) return { ok: true, msg: 'đã xóa (không còn trong danh sách)' };
-      return { ok: false, msg: 'không thấy phiếu "Đang thực hiện" trên Cổng' };
+      const other = readRows().find((r) => r.name === it.name && r.year === it.year && r.ngayKham === it.ngayKham && (!it.cccd || r.cccd === it.cccd));
+      if (other) return { ok: false, msg: `phiếu đang ở trạng thái "${other.status}" — không xóa` };
+      if (pageCount() > 1) return { ok: false, msg: 'tìm theo tên ra nhiều trang — hãy lọc "Đang thực hiện" rồi thử lại' };
+      // Bảng đã tải xong mà không còn phiếu này → đã bị xóa (Cổng thường xóa xong nhưng phản hồi treo)
+      return { ok: true, msg: 'không còn trên Cổng (đã xóa)' };
     }
 
     closeOverlays(); await sleep(300);
@@ -153,15 +155,34 @@
     inp.dispatchEvent(new Event('change', { bubbles: true }));
     await sleep(300);
     search.click();
-    const ok = await waitFor(() => {
+    // Ô tìm tên là tìm GẦN ĐÚNG (LÊ THỊ MINH ra cả LÊ THỊ MINH HƯƠNG) → chỉ cần mọi dòng CHỨA tên.
+    // Trong lúc tải, bảng có thể tạm trống → đợi hết "Loading" và bảng ổn định 2 lần liên tiếp.
+    await sleep(1200);
+    const snap = () => {
+      if (isLoading()) return null;
       const body = document.querySelector('tbody');
-      if (!body || /Loading/i.test(body.innerText)) return false;
-      if (/Không có dữ liệu/i.test(body.innerText)) return true;
+      if (!body) return null;
+      if (/Không có dữ liệu/i.test(body.innerText)) return 'EMPTY';
       const rows = readRows();
-      return rows.length && rows.every((r) => r.name === name);
-    }, 15000);
-    await sleep(500);
+      if (!rows.length || !rows.every((r) => r.name.includes(name))) return null;
+      return rows.map((r) => r.name + r.cccd + r.ngayKham + r.status).join('#');
+    };
+    let last = null;
+    const ok = await waitFor(() => {
+      const s = snap();
+      if (s && s === last) return true;
+      last = s;
+      return false;
+    }, 20000);
     return !!ok;
+  }
+  function isLoading() {
+    return [...document.querySelectorAll('body *')].some((e) => e.children.length === 0 && /^Loading/i.test((e.textContent || '').trim()) && e.offsetParent);
+  }
+  function pageCount() {
+    const t = [...document.querySelectorAll('*')].find((e) => e.children.length === 0 && /Trang \d+ trên \d+/.test(e.textContent));
+    const m = t && t.textContent.match(/Trang \d+ trên (\d+)/);
+    return m ? +m[1] : 1;
   }
 
   const DKEY = 'kskDelRun';
