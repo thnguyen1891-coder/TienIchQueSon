@@ -92,8 +92,14 @@
   }
 
   async function deleteOne(it) {
-    const row = readRows().find((r) => r.name === it.name && r.year === it.year && r.ngayKham === it.ngayKham && /Đang thực hiện/i.test(r.status));
-    if (!row) return { ok: false, msg: 'không thấy trên trang đang xem' };
+    // Lọc danh sách theo tên để không phụ thuộc trang đang xem
+    if (!(await filterByName(it.name))) return { ok: false, msg: 'không lọc được theo tên' };
+    const row = readRows().find((r) => r.name === it.name && r.year === it.year && r.ngayKham === it.ngayKham && (!it.cccd || r.cccd === it.cccd) && /Đang thực hiện/i.test(r.status));
+    if (!row) {
+      // Danh sách của Cổng cập nhật chậm; nếu đã gửi lệnh xóa trước đó mà nay không còn → coi như đã xóa
+      if (it.delSent) return { ok: true, msg: 'đã xóa (không còn trong danh sách)' };
+      return { ok: false, msg: 'không thấy phiếu "Đang thực hiện" trên Cổng' };
+    }
 
     closeOverlays(); await sleep(300);
     const btn = row.el.cells[row.el.cells.length - 1].querySelector('button');
@@ -122,14 +128,13 @@
     mo.observe(document.body, { childList: true, subtree: true });
     [...dlg.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Xóa').click();
 
-    await waitFor(() => toast || !document.body.contains(dlg), 25000);
-    await waitFor(() => toast, 3000);
+    await waitFor(() => toast || !document.body.contains(dlg), 12000);
+    await waitFor(() => toast, 2000);
     mo.disconnect();
 
-    if (document.body.contains(dlg)) {
-      const out = [...dlg.querySelectorAll('button')].find((b) => /Thoát/i.test(b.innerText));
-      if (out && !out.disabled) out.click();
-      return { ok: false, msg: 'quá thời gian chờ — thử lại sau' };
+    if (!toast && document.body.contains(dlg)) {
+      // Cổng thường đã xóa nhưng phản hồi treo rất lâu → tải lại trang rồi kiểm tra lại (lần sau sẽ báo "Không tìm thấy")
+      return { ok: false, hung: true, msg: 'Cổng phản hồi chậm — tải lại trang để kiểm tra' };
     }
     if (/thành công/i.test(toast)) return { ok: true, msg: 'xóa thành công' };
     if (/Không tìm thấy/i.test(toast)) return { ok: true, msg: 'đã bị xóa trước đó' };
@@ -137,6 +142,30 @@
     return { ok: true, msg: 'hộp đã đóng (không thấy thông báo)' };
   }
 
+  // Gõ tên vào ô "Họ và tên" rồi bấm Tìm kiếm; chờ bảng chỉ còn đúng tên đó (hoặc "Không có dữ liệu").
+  async function filterByName(name) {
+    const inp = [...document.querySelectorAll('input')].find((i) => /Họ và tên/i.test(i.placeholder || ''));
+    const search = [...document.querySelectorAll('button')].find((b) => /Tìm kiếm/.test(b.innerText));
+    if (!inp || !search) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(inp, name);
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+    inp.dispatchEvent(new Event('change', { bubbles: true }));
+    await sleep(300);
+    search.click();
+    const ok = await waitFor(() => {
+      const body = document.querySelector('tbody');
+      if (!body || /Loading/i.test(body.innerText)) return false;
+      if (/Không có dữ liệu/i.test(body.innerText)) return true;
+      const rows = readRows();
+      return rows.length && rows.every((r) => r.name === name);
+    }, 15000);
+    await sleep(500);
+    return !!ok;
+  }
+
+  const DKEY = 'kskDelRun';
+  const MAX_DEL_TRIES = 4;
   let busy = false, stopFlag = false;
   async function deleteMatched() {
     if (busy) return;
@@ -144,23 +173,45 @@
     const todo = q.filter((x) => x.status === 'matched' || x.status === 'delfail');
     if (!todo.length) { log('Không có hồ sơ "Đã khớp" để xóa. Hãy bấm Đối chiếu bên csdlyte trước.'); return; }
     if (!confirm(`Xóa VĨNH VIỄN ${todo.length} phiếu khám trên Cổng dữ liệu sức khỏe?\n\n` + todo.slice(0, 15).map((x) => `• ${x.name} (${x.year}) – khám ${x.ngayKham}`).join('\n') + (todo.length > 15 ? '\n…' : '') + '\n\nKhông khôi phục được.')) return;
+    // Lỗi cũ được thử lại từ đầu
+    for (const x of q) if (x.status === 'delfail') { x.status = 'matched'; x.delTries = 0; }
+    await setQ(q);
+    await new Promise((r) => chrome.storage.local.set({ [DKEY]: { active: true } }, r));
+    runDeletes();
+  }
+
+  // Chạy lần lượt; nếu Cổng treo thì tải lại trang và tiếp tục (trạng thái lưu trong storage).
+  async function runDeletes() {
+    if (busy) return;
     busy = true; stopFlag = false; render();
-    let ok = 0, fail = 0;
-    for (const it of todo) {
-      if (stopFlag) break;
-      log(`Đang xóa ${it.name}…`);
-      let res;
-      try { res = await deleteOne(it); } catch (e) { res = { ok: false, msg: String(e) }; }
-      const cur = await getQ();
-      const t = cur.find((x) => keyOf(x) === keyOf(it));
-      if (t) { t.status = res.ok ? 'deleted' : 'delfail'; t.note = res.msg; }
-      await setQ(cur);
-      res.ok ? ok++ : fail++;
-      await sleep(1500);
-    }
-    busy = false;
-    log(`Xong: xóa ${ok}, lỗi ${fail}${stopFlag ? ' (đã dừng)' : ''}. Sang csdlyte bấm "Ký & đẩy lại".`);
-    render();
+    try {
+      for (;;) {
+        const run = await new Promise((r) => chrome.storage.local.get(DKEY, (o) => r(o[DKEY] || {})));
+        if (!run.active || stopFlag) break;
+        const cur = await getQ();
+        const it = cur.find((x) => x.status === 'matched');
+        if (!it) break;
+        const n = cur.filter((x) => x.status === 'matched').length;
+        log(`Đang xóa ${it.name} (còn ${n})…`);
+        let res;
+        try { res = await deleteOne(it); } catch (e) { res = { ok: false, msg: String(e) }; }
+        const q2 = await getQ();
+        const t = q2.find((x) => keyOf(x) === keyOf(it));
+        if (t) {
+          t.delTries = (t.delTries || 0) + 1;
+          if (res.ok) { t.status = 'deleted'; t.note = res.msg; }
+          else if (res.hung) { t.delSent = Date.now(); t.note = res.msg; if (t.delTries >= MAX_DEL_TRIES) t.status = 'delfail'; }
+          else if (t.delTries >= 2 || !/lọc|menu|hộp xác nhận/.test(res.msg)) { t.status = 'delfail'; t.note = res.msg; }
+        }
+        await setQ(q2);
+        if (res.hung) { log('Cổng phản hồi chậm — tải lại trang và tiếp tục…'); await sleep(1500); location.reload(); return; }
+        await sleep(1200);
+      }
+      await new Promise((r) => chrome.storage.local.set({ [DKEY]: { active: false } }, r));
+      const q = await getQ();
+      const done = q.filter((x) => x.status === 'deleted').length, fail = q.filter((x) => x.status === 'delfail').length;
+      log(`Xong lượt xóa${stopFlag ? ' (đã dừng)' : ''}: đã xóa ${done}, lỗi ${fail}. Sang csdlyte bấm "Ký & đẩy lại".`);
+    } finally { busy = false; render(); }
   }
 
   // ---------- Bảng điều khiển ----------
@@ -202,7 +253,11 @@
       '① Lọc "Trạng thái ký số: Đang thực hiện", bấm Quét (mỗi trang một lần). ② Sang csdlyte bấm Đối chiếu. ③ Quay lại đây bấm Xóa (hồ sơ phải hiện trên trang đang xem). ④ Sang csdlyte bấm Ký & đẩy lại.'));
     body.appendChild(btn('Quét trang này', '#4338ca', scan));
     body.appendChild(btn('Xóa hồ sơ đã khớp', '#dc2626', deleteMatched));
-    body.appendChild(btn('Dừng', '#6b7280', () => { stopFlag = true; log('Sẽ dừng sau hồ sơ hiện tại…'); }));
+    body.appendChild(btn('Dừng', '#6b7280', () => {
+      stopFlag = true;
+      chrome.storage.local.set({ [DKEY]: { active: false } });
+      log('Sẽ dừng sau hồ sơ hiện tại…');
+    }));
     body.appendChild(btn('Xóa hàng đợi', '#9ca3af', async () => {
       if (!confirm('Xóa toàn bộ hàng đợi (chỉ danh sách trong tiện ích, không xóa hồ sơ)?')) return;
       await setQ([]); render();
@@ -213,6 +268,14 @@
     panel.appendChild(head); panel.appendChild(body);
     document.body.appendChild(panel);
     render();
+    // Tiếp tục lượt xóa đang dở (sau khi trang được tải lại)
+    chrome.storage.local.get(DKEY, async (o) => {
+      if (o[DKEY] && o[DKEY].active) {
+        log('Tiếp tục lượt xóa đang dở…');
+        await waitFor(() => document.querySelector('tbody tr') && !/Loading/i.test(document.querySelector('tbody').innerText), 20000);
+        runDeletes();
+      }
+    });
   }
 
   chrome.storage.onChanged.addListener((c) => { if (c[QKEY]) render(); });

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Tiện ích thông minh - TTYTKV Quế Sơn",
-  "version": "2.3.43",
-  "version_name": "2.3.43",
+  "version": "2.3.44",
+  "version_name": "2.3.44",
   "description": "Tiện ích kiểm tra thẻ BHYT từ Cổng BHXH Việt Nam và tự động điền thông tin tiếp nhận bệnh nhân trên VNPT HIS.",
   "action": {
     "default_popup": "popup.html",
