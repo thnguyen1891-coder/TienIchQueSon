@@ -98,23 +98,24 @@
     return all;
   }
   let busy = false;
-  async function matchAll() {
-    if (busy) return; busy = true;
+  // onlyNew = true (chế độ tự động): chỉ đối chiếu hồ sơ mới, không lặp lại hồ sơ đã "Không thấy"/"Nhiều kết quả".
+  async function matchAll(onlyNew) {
+    if (busy) return 'busy'; busy = true;
     try {
       const q = await get(QKEY, []);
-      const todo = q.filter((x) => ['new', 'nomatch', 'ambiguous', 'review'].includes(x.status));
-      if (!todo.length) { log('Không có hồ sơ cần đối chiếu. Quét bên csdlksk trước.'); return; }
+      const todo = q.filter((x) => (onlyNew ? ['new'] : ['new', 'nomatch', 'ambiguous', 'review']).includes(x.status));
+      if (!todo.length) { log('Không có hồ sơ cần đối chiếu. Quét bên csdlksk trước.'); return 'none'; }
       let i = 0;
       for (const it of todo) {
         log(`Đối chiếu ${++i}/${todo.length}: ${it.name}…`);
         let m;
-        try { m = await findMatches(it); } catch (e) { log(String(e.message || e)); return; }
+        try { m = await findMatches(it); } catch (e) { log(String(e.message || e)); return /phiên/.test(String(e.message)) ? 'login' : 'error'; }
         // Khớp theo: họ tên + năm sinh (ở bước tìm) + Số CCCD + Ngày khám (đọc trong hồ sơ)
         const ok = [], other = [];
         for (const c of m.slice(0, 6)) {
           log(`Đối chiếu ${i}/${todo.length}: ${it.name} — mở hồ sơ #${c.id}…`);
           const d = await readDetail(c.id);
-          if (d && d.login) { log('Hết phiên đăng nhập csdlyte — đăng nhập lại rồi bấm Đối chiếu.'); return; }
+          if (d && d.login) { log('Hết phiên đăng nhập csdlyte — đăng nhập lại rồi bấm Đối chiếu.'); return 'login'; }
           if (d && cccdMatch(it.cccd, d.cccd) && d.ngayKham === it.ngayKham) ok.push(c);
           else other.push(`${c.kho} #${c.id}` + (d ? ` khám ${d.ngayKham}${cccdMatch(it.cccd, d.cccd) ? '' : ', CCCD khác'}` : ' (không đọc được)'));
         }
@@ -126,6 +127,7 @@
         await updateItem(it, patch);
       }
       log('Đối chiếu xong. Quay lại csdlksk bấm "Xóa hồ sơ đã khớp".');
+      return 'ok';
     } finally { busy = false; }
   }
 
@@ -142,11 +144,16 @@
     return null;
   }
 
-  async function stopRun(msg) {
+  async function stopRun(msg, finished) {
     await set(RKEY, { active: false });
     setAuto(false);
     if (msg) log(msg);
     render();
+    // Chế độ tự động: ký xong hết → sang kiểm tra Nhật ký trên Cổng
+    if (finished) {
+      const a = await get(AKEY, { active: false });
+      if (a.active && a.phase === 'sign') await goPhaseY('verify', 'Đã ký & liên thông xong lượt này');
+    }
   }
 
   async function step() {
@@ -158,7 +165,7 @@
 
     const q = await get(QKEY, []);
     const it = q.find((x) => x.status === 'deleted' && x.id && x.kho);
-    if (!it) return stopRun('Ký & đẩy lại: đã xong hết hồ sơ trong hàng đợi.');
+    if (!it) return stopRun('Ký & đẩy lại: đã xong hết hồ sơ trong hàng đợi.', true);
     if (!onUrl(it)) { location.href = urlFor(it); return; }
 
     const stage = it.stage || 'unmark';
@@ -204,7 +211,7 @@
     if (stage === 'sign') {
       if (linked) {
         // Hủy chưa ăn hoặc hồ sơ đã được đẩy lại (vd. bạn tự đẩy tay)
-        if (it.signedAt) { await updateItem(it, { status: 'pushed', stage: '', tries: 0, note: 'đã lên Cổng' }); location.reload(); return; }
+        if (it.signedAt) { await updateItem(it, { status: 'pushed', stage: '', tries: 0, note: 'đã lên Cổng', pushedAt: Date.now() }); location.reload(); return; }
         if ((it.unmarks || 0) >= 2) { await updateItem(it, { status: 'error', note: 'hủy đánh dấu liên thông không được — kiểm tra tay' }); location.reload(); return; }
         await goStage('unmark'); location.reload(); return;
       }
@@ -239,7 +246,7 @@
 
     if (stage === 'push') {
       if (linked) {
-        await updateItem(it, { status: 'pushed', stage: '', tries: 0, why: '', note: (row.innerText.match(/Chờ Cổng ETL|Đã liên thông/) || [''])[0] });
+        await updateItem(it, { status: 'pushed', stage: '', tries: 0, why: '', pushedAt: Date.now(), note: (row.innerText.match(/Chờ Cổng ETL|Đã liên thông/) || [''])[0] });
         location.reload(); return;
       }
       const lt = [...row.querySelectorAll('button')].find((b) => ((b.title || '') + (b.getAttribute('aria-label') || '')).includes('Liên thông hồ sơ #' + it.id));
@@ -262,8 +269,52 @@
     step();
   }
 
+  // ================= TỰ ĐỘNG TOÀN BỘ (phần csdlyte) =================
+  // Bộ điều phối nằm ở ksk_admin.js; trang này chỉ làm bước "match" và "sign", xong thì quay về Cổng.
+  const AKEY = 'kskAuto';
+  const URL_CHECKUP = 'https://admin.csdlksk.vn/admin/operation/health-checkup';
+  const URL_LOG = 'https://admin.csdlksk.vn/admin/operation/health-data';
+  const PHASE_NAME = { scan: 'Quét Cổng', match: 'Đối chiếu csdlyte', delete: 'Xóa trên Cổng', sign: 'Ký & liên thông', verify: 'Kiểm tra Nhật ký', done: 'Hoàn tất' };
+  async function setA(patch) { const a = await get(AKEY, { active: false }); await set(AKEY, Object.assign(a, patch)); }
+  async function goPhaseY(phase, msg) {
+    await setA({ phase, msg: msg || '', phaseAt: Date.now() });
+    render();
+    if (phase === 'sign' || phase === 'match') { setTimeout(autoTick, 500); return; }
+    location.href = phase === 'verify' ? URL_LOG : URL_CHECKUP;
+  }
+  let ticking = false;
+  async function autoTick() {
+    if (ticking) return;
+    const a = await get(AKEY, { active: false });
+    if (!a.active) return;
+    if (location.pathname.startsWith('/login')) { log('Hết phiên csdlyte — đăng nhập lại, tự động sẽ chạy tiếp.'); return; }
+    ticking = true;
+    try {
+      if (a.phase === 'match') {
+        const r = await matchAll(true);
+        if (r === 'login' || r === 'busy') return;
+        if (r === 'error') { await setA({ active: false, msg: 'Lỗi khi đối chiếu — đã dừng.' }); render(); return; }
+        const q = await get(QKEY, []);
+        const m = q.filter((x) => x.status === 'matched').length;
+        const next = m ? 'delete' : (q.some((x) => x.status === 'deleted') ? 'sign' : 'scan');
+        await goPhaseY(next, `Đối chiếu: khớp ${m}`);
+        return;
+      }
+      if (a.phase === 'sign') {
+        const run = await get(RKEY, { active: false });
+        if (run.active) return; // đang chạy (step được gọi khi tải trang)
+        await set(RKEY, { active: true, autoSign: true, auto: true });
+        render();
+        step();
+        return;
+      }
+      // Các bước còn lại làm trên Cổng
+      location.href = a.phase === 'verify' ? URL_LOG : URL_CHECKUP;
+    } finally { ticking = false; }
+  }
+
   // ---------- Bảng điều khiển ----------
-  let panel, logEl, listEl, autoBox, runEl;
+  let panel, logEl, listEl, autoBox, runEl, autoEl;
   function log(msg) { if (logEl) logEl.textContent = msg; }
   function el(tag, css, text) { const e = document.createElement(tag); if (css) e.style.cssText = css; if (text != null) e.textContent = text; return e; }
   function btn(label, bg, fn) {
@@ -275,6 +326,11 @@
     const q = await get(QKEY, []);
     const run = await get(RKEY, { active: false });
     runEl.textContent = run.active ? `● Đang chạy Ký & đẩy lại${run.autoSign ? ' (tự xác nhận ký)' : ''}` : '';
+    const a = await get(AKEY, { active: false });
+    autoEl.textContent = a.active
+      ? `● TỰ ĐỘNG — chu kỳ ${a.cycle || 1} · bước: ${PHASE_NAME[a.phase] || a.phase}${a.msg ? ' · ' + a.msg : ''}`
+      : (a.msg ? `Tự động: ${a.msg}` : '');
+    autoEl.parentElement.style.display = (a.active || a.msg) ? '' : 'none';
     const cnt = {};
     q.forEach((x) => { cnt[x.status] = (cnt[x.status] || 0) + 1; });
     listEl.innerHTML = '';
@@ -286,12 +342,13 @@
       line.appendChild(el('span', '', `${x.name} (${x.year}) · ${x.ngayKham} — `));
       line.appendChild(el('span', `color:${color};font-weight:600`, STATUS[x.status] || x.status));
       if (x.note) line.appendChild(el('span', 'color:#777', ` · ${x.note}`));
+      if (x.portal) line.appendChild(el('span', 'color:#0f766e', ` · Nhật ký: ${x.portal}`));
       if (x.status === 'error' || x.status === 'delfail') {
         const a = el('a', 'margin-left:6px;color:#0f766e;cursor:pointer;text-decoration:underline', 'đã xử lý tay');
         a.title = 'Bạn đã tự ký/đẩy hồ sơ này → đánh dấu "Đã đẩy lại"';
         a.onclick = async () => {
           if (!confirm(`Đánh dấu ${x.name} là đã xử lý tay (đã ký và đẩy lên Cổng)?`)) return;
-          await updateItem(x, { status: 'pushed', note: 'xử lý tay', stage: '', tries: 0 });
+          await updateItem(x, { status: 'pushed', note: 'xử lý tay', stage: '', tries: 0, pushedAt: Date.now() });
           render();
         };
         line.appendChild(a);
@@ -306,7 +363,17 @@
     const head = el('div', 'padding:6px 10px;background:#047857;color:#fff;border-radius:10px 10px 0 0;cursor:pointer;font-weight:600', 'KSK ký lại — Bước 2 & 4 (csdlyte) ▾');
     const body = el('div', 'padding:8px 10px');
     head.onclick = () => { body.style.display = body.style.display === 'none' ? '' : 'none'; };
-    body.appendChild(btn('Đối chiếu', '#047857', matchAll));
+    const autoWrap = el('div', 'margin:0 0 6px;padding:6px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px');
+    autoEl = el('span', 'color:#b45309;font-weight:600');
+    autoWrap.appendChild(autoEl);
+    autoWrap.appendChild(btn('■ Dừng tự động', '#6b7280', async () => {
+      await set(RKEY, { active: false }); setAuto(false);
+      await setA({ active: false, msg: 'Đã dừng theo yêu cầu.' });
+      log('Đã dừng tự động.'); render();
+    }));
+    body.appendChild(autoWrap);
+    body.appendChild(el('div', 'color:#777;margin:2px 0', 'Chạy tự động: bấm "▶ Chạy" trên bảng của Cổng csdlksk. Làm tay từng bước:'));
+    body.appendChild(btn('Đối chiếu', '#047857', () => matchAll(false)));
     body.appendChild(btn('Ký & đẩy lại', '#1d4ed8', startRun));
     body.appendChild(btn('Dừng', '#6b7280', () => stopRun('Đã dừng.')));
     body.appendChild(btn('Đặt lại lỗi', '#9ca3af', async () => {
@@ -334,7 +401,14 @@
     render();
   }
 
-  chrome.storage.onChanged.addListener((c) => { if (c[QKEY] || c[RKEY]) render(); });
+  chrome.storage.onChanged.addListener((c) => {
+    if (c[QKEY] || c[RKEY] || c[AKEY]) render();
+    if (c[AKEY] && c[AKEY].newValue && c[AKEY].newValue.active &&
+        (!c[AKEY].oldValue || !c[AKEY].oldValue.active || c[AKEY].oldValue.phase !== c[AKEY].newValue.phase)) setTimeout(autoTick, 800);
+  });
   mount();
-  get(RKEY, { active: false }).then((r) => { if (!r.active) setAuto(false); else step(); });
+  get(RKEY, { active: false }).then((r) => {
+    if (r.active) step();
+    else { setAuto(false); setTimeout(autoTick, 1500); }
+  });
 })();

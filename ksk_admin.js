@@ -58,13 +58,16 @@
   }
 
   // ---------- Quét ----------
-  async function scan() {
+  async function scan(limit = Infinity) {
     const today = todayStr();
     const rows = readRows().filter((r) => /Đang thực hiện/i.test(r.status));
     const q = await getQ();
-    const have = new Set(q.map(keyOf));
+    // Bỏ qua cả hồ sơ đã xóa trước đây (kskDone) — danh sách Cổng cập nhật chậm nên phiếu đã xóa có thể còn hiện
+    const done = await new Promise((r) => chrome.storage.local.get('kskDone', (o) => r(o.kskDone || {})));
+    const have = new Set(q.map(keyOf).concat(Object.keys(done)));
     let added = 0, skippedToday = 0;
     for (const r of rows) {
+      if (added >= limit) break;
       if (r.ngayKham === today) { skippedToday++; continue; }
       const it = { name: r.name, year: r.year, ngayKham: r.ngayKham, cccd: r.cccd, status: 'new', note: '' };
       if (have.has(keyOf(it))) continue;
@@ -72,6 +75,7 @@
     }
     await setQ(q);
     log(`Đã quét ${rows.length} phiếu "Đang thực hiện": thêm ${added}` + (skippedToday ? `, bỏ qua ${skippedToday} phiếu khám hôm nay` : '') + '.');
+    return added;
   }
 
   // ---------- Xóa ----------
@@ -220,7 +224,14 @@
         const t = q2.find((x) => keyOf(x) === keyOf(it));
         if (t) {
           t.delTries = (t.delTries || 0) + 1;
-          if (res.ok) { t.status = 'deleted'; t.note = res.msg; }
+          if (res.ok) {
+            t.status = 'deleted'; t.note = res.msg;
+            const done = await new Promise((r) => chrome.storage.local.get('kskDone', (o) => r(o.kskDone || {})));
+            done[keyOf(t)] = Date.now();
+            // giữ 60 ngày gần nhất
+            for (const k of Object.keys(done)) if (Date.now() - done[k] > 60 * 864e5) delete done[k];
+            await new Promise((r) => chrome.storage.local.set({ kskDone: done }, r));
+          }
           else if (res.hung) { t.delSent = Date.now(); t.note = res.msg; if (t.delTries >= MAX_DEL_TRIES) t.status = 'delfail'; }
           else if (t.delTries >= 2 || !/lọc|menu|hộp xác nhận/.test(res.msg)) { t.status = 'delfail'; t.note = res.msg; }
         }
@@ -232,11 +243,187 @@
       const q = await getQ();
       const done = q.filter((x) => x.status === 'deleted').length, fail = q.filter((x) => x.status === 'delfail').length;
       log(`Xong lượt xóa${stopFlag ? ' (đã dừng)' : ''}: đã xóa ${done}, lỗi ${fail}. Sang csdlyte bấm "Ký & đẩy lại".`);
+      // Chế độ tự động: chuyển sang bước ký trên csdlyte
+      const a = await getA();
+      if (a.active && a.phase === 'delete' && !stopFlag) {
+        setTimeout(() => goPhase(done ? 'sign' : 'scan', `Đã xóa ${done}, lỗi ${fail}`), 300);
+      }
     } finally { busy = false; render(); }
   }
 
+  // ================= TỰ ĐỘNG TOÀN BỘ =================
+  // Một tab duy nhất tự chuyển qua lại giữa Cổng (csdlksk) và csdlyte theo các bước:
+  // scan (Cổng) → match (csdlyte) → delete (Cổng) → sign (csdlyte) → verify (Nhật ký Cổng) → scan … đến khi hết.
+  const AKEY = 'kskAuto';
+  const URL_CHECKUP = 'https://admin.csdlksk.vn/admin/operation/health-checkup';
+  const URL_LOG = 'https://admin.csdlksk.vn/admin/operation/health-data';
+  const URL_YTE = 'https://csdlyte.danang.gov.vn/records?kho=ksk96';
+  const PHASE_NAME = { scan: 'Quét Cổng', match: 'Đối chiếu csdlyte', delete: 'Xóa trên Cổng', sign: 'Ký & liên thông', verify: 'Kiểm tra Nhật ký', done: 'Hoàn tất' };
+  const getA = () => new Promise((r) => chrome.storage.local.get(AKEY, (o) => r(o[AKEY] || { active: false })));
+  const setA = (patch) => getA().then((a) => new Promise((r) => chrome.storage.local.set({ [AKEY]: Object.assign(a, patch) }, r)));
+
+  async function goPhase(phase, msg) {
+    await setA({ phase, msg: msg || '', phaseAt: Date.now() });
+    render(); // autoTick sẽ chạy qua chrome.storage.onChanged khi đổi bước
+  }
+
+  function isLoadingAny() {
+    return [...document.querySelectorAll('body *')].some((e) => e.children.length === 0 && /^Loading/i.test((e.textContent || '').trim()) && e.offsetParent);
+  }
+  async function waitSettled(ms = 25000) {
+    let last = null;
+    return waitFor(() => {
+      if (isLoadingAny()) { last = null; return false; }
+      const b = document.querySelector('tbody');
+      if (!b) return false;
+      const s = b.innerText;
+      if (s === last) return true;
+      last = s; return false;
+    }, ms).then((v) => (sleep(300).then(() => v)));
+  }
+  // Chọn giá trị trong ô chọn (Radix Select): mở bằng chuột, chọn bằng phím Enter (bấm chuột không ăn)
+  async function pickSelect(re, optText) {
+    const c = [...document.querySelectorAll('[role=combobox]')].find((e) => re.test(e.innerText.trim()));
+    if (!c) return false;
+    if (c.innerText.trim() === optText) return true;
+    for (let k = 0; k < 2; k++) {
+      fire(c, ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']);
+      const o = await waitFor(() => [...document.querySelectorAll('[role=option]')].find((x) => x.innerText.trim() === optText), 2000);
+      if (!o) { closeOverlays(); await sleep(300); continue; }
+      o.focus();
+      o.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await sleep(400);
+      if (c.innerText.trim() === optText) return true;
+      o.click(); await sleep(400);
+      if (c.innerText.trim() === optText) return true;
+    }
+    return c.innerText.trim() === optText;
+  }
+  function nextPageBtn() {
+    return [...document.querySelectorAll('button')].find((b) => /Trang sau/i.test((b.getAttribute('aria-label') || '') + (b.title || '') + b.textContent));
+  }
+
+  async function autoScan(a) {
+    log('Tự động: chọn "Đang thực hiện", 50 dòng/trang, tìm kiếm…');
+    await waitSettled();
+    const okSt = await pickSelect(/^(Trạng thái ký số|Chưa ký số|Đang thực hiện|Đã ký số)$/, 'Đang thực hiện');
+    if (!okSt) { await setA({ active: false, msg: 'Không chọn được bộ lọc "Đang thực hiện" — đã dừng.' }); log('Không chọn được bộ lọc "Đang thực hiện" — đã dừng.'); return; }
+    await pickSelect(/^\d+$/, '50');
+    await sleep(800); await waitSettled(); // đổi số dòng làm trang tải lại — chờ xong mới bấm Tìm kiếm
+    const inp = [...document.querySelectorAll('input')].find((i) => /Họ và tên/i.test(i.placeholder || ''));
+    if (inp && inp.value) {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(inp, '');
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    // Bấm Tìm kiếm và kiểm tra bộ lọc đã ăn (mọi dòng đều "Đang thực hiện"); thử lại tối đa 3 lần
+    let filtered = false;
+    for (let k = 0; k < 3 && !filtered; k++) {
+      const search = [...document.querySelectorAll('button')].find((b) => /Tìm kiếm/.test(b.innerText));
+      if (search) search.click();
+      await sleep(1500); await waitSettled();
+      const rows = readRows();
+      filtered = !rows.length || rows.every((r) => /Đang thực hiện/i.test(r.status));
+    }
+    if (!filtered) log('Cảnh báo: bộ lọc chưa ăn — vẫn quét nhưng chỉ lấy phiếu "Đang thực hiện".');
+
+    const batch = a.batch || 20;
+    let added = 0;
+    for (let p = 0; p < 40 && added < batch; p++) {
+      added += await scan(batch - added);
+      if (added >= batch) break;
+      const nb = nextPageBtn();
+      if (!nb || nb.disabled) break;
+      nb.click(); await sleep(1500); await waitSettled();
+    }
+    const q = await getQ();
+    const pend = q.filter((x) => ['new', 'matched', 'deleted'].includes(x.status)).length;
+    if (!pend) {
+      await setA({ active: false, phase: 'done', msg: 'Hết hồ sơ "Đang thực hiện" cần xử lý.' });
+      log('Tự động: hết hồ sơ cần xử lý — đã dừng.'); render(); return;
+    }
+    await goPhase('match', `Chu kỳ ${a.cycle || 1}: thêm ${added} hồ sơ mới`);
+  }
+
+  async function autoDelete() {
+    const q = await getQ();
+    if (!q.some((x) => x.status === 'matched')) return goPhase(q.some((x) => x.status === 'deleted') ? 'sign' : 'scan', 'Không có hồ sơ cần xóa');
+    await new Promise((r) => chrome.storage.local.set({ [DKEY]: { active: true } }, r));
+    await waitSettled();
+    runDeletes(); // khi xong sẽ tự chuyển sang bước "sign"
+  }
+
+  function parseDT(s) {
+    const m = (s || '').match(/(\d\d)\/(\d\d)\/(\d{4})\s+(\d\d):(\d\d)(?::(\d\d))?/);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +(m[6] || 0)).getTime() : 0;
+  }
+  async function autoVerify(a) {
+    log('Tự động: kiểm tra Nhật ký liên thông…');
+    await waitSettled();
+    await pickSelect(/^\d+$/, '50');
+    await sleep(1200); await waitSettled();
+    const ths = [...document.querySelectorAll('thead th')].map((t) => norm(t.innerText));
+    const ix = (re, d) => { const i = ths.findIndex((t) => re.test(t)); return i >= 0 ? i : d; };
+    const c = { name: ix(/TÊN BỆNH NHÂN/, 1), st: ix(/TRẠNG THÁI/, 2), dt: ix(/NGÀY ĐẨY/, 3), why: ix(/LÝ DO/, 4) };
+    const rows = [...document.querySelectorAll('tbody tr')].filter((r) => r.cells.length > 3).map((r) => ({
+      name: norm(r.cells[c.name].innerText), st: r.cells[c.st].innerText.trim(), t: parseDT(r.cells[c.dt].innerText), why: r.cells[c.why].innerText.trim(),
+    }));
+    const q = await getQ();
+    let ok = 0, miss = 0;
+    for (const it of q.filter((x) => x.status === 'pushed' && !x.verified)) {
+      const t0 = (it.pushedAt || 0) - 10 * 60 * 1000;
+      const r = rows.find((x) => x.name === it.name && x.t >= t0);
+      if (r) { it.portal = `${r.st} · ${r.why}`; it.verified = true; ok++; }
+      else { it.vtries = (it.vtries || 0) + 1; if (it.vtries >= 2) { it.portal = 'chưa thấy trong Nhật ký'; it.verified = true; } miss++; }
+    }
+    await setQ(q);
+    await setA({ cycle: (a.cycle || 1) + 1 });
+    await goPhase('scan', `Nhật ký: xác nhận ${ok}, chưa thấy ${miss}`);
+  }
+
+  let ticking = false;
+  async function autoTick() {
+    if (ticking) return;
+    const a = await getA();
+    if (!a.active) return;
+    ticking = true;
+    try {
+      if (a.phase === 'match' || a.phase === 'sign') { location.href = URL_YTE; return; }
+      if (a.phase === 'verify') {
+        if (!/health-data/.test(location.pathname)) { location.href = URL_LOG; return; }
+        await autoVerify(a); return;
+      }
+      if (!/health-checkup/.test(location.pathname)) { location.href = URL_CHECKUP; return; }
+      if (a.phase === 'scan') await autoScan(a);
+      else if (a.phase === 'delete') await autoDelete();
+    } catch (e) {
+      log('Lỗi tự động: ' + (e && e.message ? e.message : e));
+    } finally { ticking = false; }
+  }
+
+  async function startAuto() {
+    const batch = Math.max(1, Math.min(200, parseInt(batchInp.value, 10) || 20));
+    if (!confirm(
+      'CHẠY TỰ ĐỘNG TOÀN BỘ:\n' +
+      `• Lọc "Đang thực hiện", quét ${batch} hồ sơ mỗi lượt (bỏ qua phiếu khám hôm nay)\n` +
+      '• Đối chiếu trên csdlyte (họ tên, năm sinh, CCCD, ngày khám)\n' +
+      '• XÓA VĨNH VIỄN phiếu đã khớp trên Cổng\n' +
+      '• TỰ tick cam kết và KÝ SỐ (có giá trị pháp lý), rồi liên thông lên Cổng\n' +
+      '• Kiểm tra Nhật ký liên thông, rồi lặp lại đến khi hết.\n\n' +
+      'Tab này sẽ tự chuyển qua lại giữa 2 trang — đừng đóng tab. Tiếp tục?')) return;
+    await new Promise((r) => chrome.storage.local.set({ kskRun: { active: false } }, r));
+    await setA({ active: true, phase: 'scan', batch, cycle: 1, startedAt: Date.now(), msg: '' });
+    render();
+    autoTick();
+  }
+  async function stopAuto() {
+    stopFlag = true;
+    await new Promise((r) => chrome.storage.local.set({ [DKEY]: { active: false }, kskRun: { active: false } }, r));
+    await setA({ active: false, msg: 'Đã dừng theo yêu cầu.' });
+    log('Đã dừng tự động.'); render();
+  }
+
   // ---------- Bảng điều khiển ----------
-  let panel, logEl, listEl;
+  let panel, logEl, listEl, autoEl, batchInp;
   function log(msg) { if (logEl) logEl.textContent = msg; }
   function el(tag, css, text) { const e = document.createElement(tag); if (css) e.style.cssText = css; if (text != null) e.textContent = text; return e; }
   function btn(label, bg, fn) {
@@ -247,6 +434,10 @@
   async function render() {
     if (!panel) return;
     const q = await getQ();
+    const a = await getA();
+    autoEl.textContent = a.active
+      ? `● TỰ ĐỘNG — chu kỳ ${a.cycle || 1} · bước: ${PHASE_NAME[a.phase] || a.phase}${a.msg ? ' · ' + a.msg : ''}`
+      : (a.msg ? `Tự động: ${a.msg}` : '');
     const cnt = {};
     q.forEach((x) => { cnt[x.status] = (cnt[x.status] || 0) + 1; });
     listEl.innerHTML = '';
@@ -259,20 +450,35 @@
       line.appendChild(el('span', '', `${x.name} (${x.year}) · ${x.ngayKham} — `));
       line.appendChild(el('span', `color:${color};font-weight:600`, STATUS[x.status] || x.status));
       if (x.note) line.appendChild(el('span', 'color:#777', ` · ${x.note}`));
+      if (x.portal) line.appendChild(el('span', 'color:#0f766e', ` · Nhật ký: ${x.portal}`));
       tbl.appendChild(line);
     });
     listEl.appendChild(tbl);
   }
 
+  const PANEL_PATH = /\/admin\/operation\/(health-checkup|health-data)/;
   function mount() {
-    if (panel || !/\/admin\/operation\/health-checkup/.test(location.pathname)) return;
+    if (panel || !PANEL_PATH.test(location.pathname)) return;
     panel = el('div', 'position:fixed;left:12px;bottom:12px;z-index:2147483646;width:420px;background:#fff;border:1px solid #c7d2fe;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.18);font:12px/1.4 system-ui,sans-serif;color:#222');
     const head = el('div', 'padding:6px 10px;background:#4338ca;color:#fff;border-radius:10px 10px 0 0;cursor:pointer;font-weight:600', 'KSK ký lại — Bước 1 & 3 (Cổng csdlksk) ▾');
     const body = el('div', 'padding:8px 10px');
     head.onclick = () => { body.style.display = body.style.display === 'none' ? '' : 'none'; };
     body.appendChild(el('div', 'color:#555;margin-bottom:4px',
       '① Lọc "Trạng thái ký số: Đang thực hiện", bấm Quét (mỗi trang một lần). ② Sang csdlyte bấm Đối chiếu. ③ Quay lại đây bấm Xóa (hồ sơ phải hiện trên trang đang xem). ④ Sang csdlyte bấm Ký & đẩy lại.'));
-    body.appendChild(btn('Quét trang này', '#4338ca', scan));
+    const autoBox = el('div', 'margin:4px 0 6px;padding:6px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px');
+    autoBox.appendChild(el('span', 'font-weight:600', 'Tự động toàn bộ — mỗi lượt '));
+    batchInp = el('input', 'width:48px;margin:0 4px;padding:1px 4px;border:1px solid #ccc;border-radius:4px');
+    batchInp.type = 'number'; batchInp.min = '1'; batchInp.max = '200'; batchInp.value = '20';
+    getA().then((a) => { if (a.batch) batchInp.value = a.batch; });
+    autoBox.appendChild(batchInp);
+    autoBox.appendChild(el('span', '', ' hồ sơ '));
+    autoBox.appendChild(btn('▶ Chạy', '#b45309', startAuto));
+    autoBox.appendChild(btn('■ Dừng', '#6b7280', stopAuto));
+    autoEl = el('div', 'margin-top:4px;color:#b45309;font-weight:600');
+    autoBox.appendChild(autoEl);
+    body.appendChild(autoBox);
+    body.appendChild(el('div', 'color:#777;margin:2px 0', 'Làm tay từng bước:'));
+    body.appendChild(btn('Quét trang này', '#4338ca', () => scan()));
     body.appendChild(btn('Xóa hồ sơ đã khớp', '#dc2626', deleteMatched));
     body.appendChild(btn('Dừng', '#6b7280', () => {
       stopFlag = true;
@@ -297,18 +503,25 @@
     render();
     // Tiếp tục lượt xóa đang dở (sau khi trang được tải lại)
     chrome.storage.local.get(DKEY, async (o) => {
-      if (o[DKEY] && o[DKEY].active) {
+      if (o[DKEY] && o[DKEY].active && /health-checkup/.test(location.pathname)) {
         log('Tiếp tục lượt xóa đang dở…');
         await waitFor(() => document.querySelector('tbody tr') && !/Loading/i.test(document.querySelector('tbody').innerText), 20000);
         runDeletes();
+      } else {
+        await waitFor(() => document.querySelector('tbody tr'), 20000);
+        autoTick();
       }
     });
   }
 
-  chrome.storage.onChanged.addListener((c) => { if (c[QKEY]) render(); });
+  chrome.storage.onChanged.addListener((c) => {
+    if (c[QKEY] || c[AKEY]) render();
+    if (c[AKEY] && c[AKEY].newValue && c[AKEY].newValue.active &&
+        (!c[AKEY].oldValue || !c[AKEY].oldValue.active || c[AKEY].oldValue.phase !== c[AKEY].newValue.phase)) setTimeout(autoTick, 800);
+  });
   // Trang là SPA: kiểm tra định kỳ để hiện/ẩn bảng điều khiển theo đường dẫn
   setInterval(() => {
-    const onPage = /\/admin\/operation\/health-checkup/.test(location.pathname);
+    const onPage = PANEL_PATH.test(location.pathname);
     if (onPage && !panel) mount();
     if (!onPage && panel) { panel.remove(); panel = null; }
   }, 1000);
