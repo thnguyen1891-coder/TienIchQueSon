@@ -9,7 +9,7 @@
 
   const QKEY = 'kskQueue', RKEY = 'kskRun', FLAG = '__tiq_ksk_autoconfirm';
   const KHO = ['ksk96', 'ksk72'];
-  const MAX_TRIES = 10;
+  const MAX_TRIES = 6; // mỗi bước
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const norm = (s) => (s || '').replace(/\s+/g, ' ').trim().toUpperCase();
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -161,58 +161,79 @@
     if (!it) return stopRun('Ký & đẩy lại: đã xong hết hồ sơ trong hàng đợi.');
     if (!onUrl(it)) { location.href = urlFor(it); return; }
 
+    const stage = it.stage || 'unmark';
+    // Đếm số lần thử THEO TỪNG BƯỚC; ghi lại lý do lần thử trước để biết kẹt vì sao.
     const tries = (it.tries || 0) + 1;
-    if (tries > MAX_TRIES) { await updateItem(it, { status: 'error', note: `kẹt ở bước ${it.stage || 'unmark'}`, tries: 0 }); location.reload(); return; }
+    if (tries > MAX_TRIES) {
+      await updateItem(it, { status: 'error', note: `kẹt ở bước ${stage}${it.why ? ': ' + it.why : ''}`, tries: 0 });
+      location.reload(); return;
+    }
     await updateItem(it, { tries });
+    const retry = async (why, ms = 1500) => { await updateItem(it, { why }); setTimeout(() => location.reload(), ms); };
+    const goStage = async (s, extra = {}) => { await updateItem(it, Object.assign({ stage: s, tries: 0, why: '' }, extra)); };
 
     const row = await waitFor(() => findRow(it.id), 5000);
     if (!row) { await updateItem(it, { status: 'error', note: 'không thấy #' + it.id }); location.reload(); return; }
-    const stage = it.stage || 'unmark';
-    log(`${it.name} (#${it.id}) — bước: ${stage}`);
+    // "Đã liên thông" hoặc "Chờ Cổng ETL" đều có nút "Hủy đánh dấu …" — cả hai đều tính là đã đẩy lên Cổng.
+    const linked = /Chờ Cổng ETL|Đã liên thông/.test(row.innerText);
+    const huyBtn = row.querySelector('button[title^="Hủy đánh dấu"],button[title^="Huỷ đánh dấu"]');
+    log(`${it.name} (#${it.id}) — bước: ${stage}${tries > 1 ? ` (lần ${tries})` : ''}`);
 
     if (stage === 'unmark') {
-      const huy = row.querySelector('button[title^="Hủy đánh dấu"]');
-      await updateItem(it, { stage: 'sign' });
-      if (huy) { huy.click(); setTimeout(() => location.reload(), 6000); return; }
+      if (linked && huyBtn) {
+        await goStage('sign', { unmarks: (it.unmarks || 0) + 1 });
+        huyBtn.click();
+        setTimeout(() => location.reload(), 6000);
+        return;
+      }
+      await goStage('sign');
       location.reload(); return;
     }
 
     if (stage === 'sign') {
-      if (row.querySelector('button[title^="Hủy đánh dấu"]')) { await updateItem(it, { stage: 'unmark' }); location.reload(); return; }
+      if (linked) {
+        // Hủy chưa ăn hoặc hồ sơ đã được đẩy lại (vd. bạn tự đẩy tay)
+        if (it.signedAt) { await updateItem(it, { status: 'pushed', stage: '', tries: 0, note: 'đã lên Cổng' }); location.reload(); return; }
+        if ((it.unmarks || 0) >= 2) { await updateItem(it, { status: 'error', note: 'hủy đánh dấu liên thông không được — kiểm tra tay' }); location.reload(); return; }
+        await goStage('unmark'); location.reload(); return;
+      }
       document.querySelectorAll('tbody input[type=checkbox]:checked').forEach((c) => c.click());
+      await sleep(300);
       const cb = row.querySelector('input[type=checkbox]');
+      if (!cb) return retry('không thấy ô chọn hồ sơ');
       if (!cb.checked) cb.click();
-      await sleep(400);
+      const kyBtn = await waitFor(() => [...document.querySelectorAll('button')].find((b) => /^Ký số 1 hồ sơ$/.test(b.innerText.trim())), 4000);
       const nChecked = document.querySelectorAll('tbody input[type=checkbox]:checked').length;
-      const kyBtn = [...document.querySelectorAll('button')].find((b) => /^Ký số 1 hồ sơ$/.test(b.innerText.trim()));
-      if (nChecked !== 1 || !kyBtn) { setTimeout(() => location.reload(), 1500); return; }
+      if (nChecked !== 1) return retry(`đang chọn ${nChecked} hồ sơ`);
+      if (!kyBtn) return retry('không thấy nút "Ký số 1 hồ sơ"');
       kyBtn.click();
-      const dlg = await waitFor(() => [...document.querySelectorAll('[role=dialog]')].find((d) => /Xác thực chữ ký số/.test(d.innerText)), 6000);
-      if (!dlg || !dlg.innerText.includes('#' + it.id)) { location.reload(); return; }
-      await updateItem(it, { stage: 'push' });
+      const dlg = await waitFor(() => [...document.querySelectorAll('[role=dialog]')].find((d) => /Xác thực chữ ký số/.test(d.innerText)), 8000);
+      if (!dlg) return retry('hộp "Xác thực chữ ký số" không mở', 500);
+      if (!dlg.innerText.includes('#' + it.id)) return retry('hộp ký không đúng hồ sơ', 500);
       if (!run.autoSign) {
+        await goStage('push', { signedAt: Date.now() });
         log(`Hãy đọc, tick ô cam kết và bấm "Xác nhận ký số" cho ${it.name}. Tiện ích sẽ tự chạy tiếp.`);
         return;
       }
       const lbl = [...dlg.querySelectorAll('label')].find((l) => /đồng ý ký số/i.test(l.innerText));
       const box = (lbl && lbl.querySelector('input[type=checkbox]')) || [...dlg.querySelectorAll('input[type=checkbox]')].pop();
       if (box && !box.checked) box.click();
-      const ok = await waitFor(() => { const b = [...dlg.querySelectorAll('button')].find((x) => x.innerText.trim() === 'Xác nhận ký số'); return b && !b.disabled ? b : null; }, 4000);
-      if (!ok) { await updateItem(it, { stage: 'sign' }); location.reload(); return; }
+      const ok = await waitFor(() => { const b = [...dlg.querySelectorAll('button')].find((x) => x.innerText.trim() === 'Xác nhận ký số'); return b && !b.disabled ? b : null; }, 5000);
+      if (!ok) return retry('nút "Xác nhận ký số" không bật', 500);
+      await goStage('push', { signedAt: Date.now() });
       ok.click();
       setTimeout(() => location.reload(), 15000);
       return;
     }
 
     if (stage === 'push') {
-      // Sau bước "hủy", nhãn liên thông đã mất; nếu nay hiện lại (Chờ Cổng ETL / Đã liên thông) là đã đẩy xong.
-      const st = (row.innerText.match(/Chờ Cổng ETL|Đã liên thông/) || [])[0];
-      if (st) {
-        await updateItem(it, { status: 'pushed', stage: '', tries: 0, note: st });
+      if (linked) {
+        await updateItem(it, { status: 'pushed', stage: '', tries: 0, why: '', note: (row.innerText.match(/Chờ Cổng ETL|Đã liên thông/) || [''])[0] });
         location.reload(); return;
       }
       const lt = [...row.querySelectorAll('button')].find((b) => ((b.title || '') + (b.getAttribute('aria-label') || '')).includes('Liên thông hồ sơ #' + it.id));
-      if (!lt) { location.reload(); return; }
+      if (!lt) return retry('không thấy nút Liên thông của hồ sơ');
+      await updateItem(it, { why: 'đã bấm Liên thông, chờ Cổng nhận' });
       lt.click();
       setTimeout(() => location.reload(), 6000);
     }
@@ -253,6 +274,16 @@
       line.appendChild(el('span', '', `${x.name} (${x.year}) · ${x.ngayKham} — `));
       line.appendChild(el('span', `color:${color};font-weight:600`, STATUS[x.status] || x.status));
       if (x.note) line.appendChild(el('span', 'color:#777', ` · ${x.note}`));
+      if (x.status === 'error' || x.status === 'delfail') {
+        const a = el('a', 'margin-left:6px;color:#0f766e;cursor:pointer;text-decoration:underline', 'đã xử lý tay');
+        a.title = 'Bạn đã tự ký/đẩy hồ sơ này → đánh dấu "Đã đẩy lại"';
+        a.onclick = async () => {
+          if (!confirm(`Đánh dấu ${x.name} là đã xử lý tay (đã ký và đẩy lên Cổng)?`)) return;
+          await updateItem(x, { status: 'pushed', note: 'xử lý tay', stage: '', tries: 0 });
+          render();
+        };
+        line.appendChild(a);
+      }
       tbl.appendChild(line);
     });
     listEl.appendChild(tbl);
@@ -268,8 +299,14 @@
     body.appendChild(btn('Dừng', '#6b7280', () => stopRun('Đã dừng.')));
     body.appendChild(btn('Đặt lại lỗi', '#9ca3af', async () => {
       const q = await get(QKEY, []);
-      q.forEach((x) => { if (x.status === 'error') { x.status = 'deleted'; x.stage = ''; x.tries = 0; x.note = ''; } });
+      q.forEach((x) => { if (x.status === 'error') { x.status = 'deleted'; x.stage = ''; x.tries = 0; x.note = ''; x.why = ''; x.unmarks = 0; } });
       await set(QKEY, q); render();
+    }));
+    body.appendChild(btn('Dọn hồ sơ đã xong', '#0f766e', async () => {
+      const q = await get(QKEY, []);
+      const keep = q.filter((x) => x.status !== 'pushed');
+      if (!confirm(`Bỏ ${q.length - keep.length} hồ sơ "Đã đẩy lại" khỏi hàng đợi? (chỉ dọn danh sách trong tiện ích)`)) return;
+      await set(QKEY, keep); render();
     }));
     const lab = el('label', 'display:block;margin:4px 0;color:#b91c1c');
     autoBox = el('input'); autoBox.type = 'checkbox';

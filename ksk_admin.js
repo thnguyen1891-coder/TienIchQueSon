@@ -279,6 +279,12 @@
       chrome.storage.local.set({ [DKEY]: { active: false } });
       log('Sẽ dừng sau hồ sơ hiện tại…');
     }));
+    body.appendChild(btn('Dọn hồ sơ đã xong', '#0f766e', async () => {
+      const q = await getQ();
+      const keep = q.filter((x) => x.status !== 'pushed');
+      if (!confirm(`Bỏ ${q.length - keep.length} hồ sơ "Đã đẩy lại" khỏi hàng đợi? (chỉ dọn danh sách trong tiện ích)`)) return;
+      await setQ(keep); render();
+    }));
     body.appendChild(btn('Xóa hàng đợi', '#9ca3af', async () => {
       if (!confirm('Xóa toàn bộ hàng đợi (chỉ danh sách trong tiện ích, không xóa hồ sơ)?')) return;
       await setQ([]); render();
