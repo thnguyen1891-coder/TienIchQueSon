@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Tiện ích thông minh - TTYTKV Quế Sơn",
-  "version": "2.3.41",
-  "version_name": "2.3.41",
+  "version": "2.3.42",
+  "version_name": "2.3.42",
   "description": "Tiện ích kiểm tra thẻ BHYT từ Cổng BHXH Việt Nam và tự động điền thông tin tiếp nhận bệnh nhân trên VNPT HIS.",
   "action": {
     "default_popup": "popup.html",
@@ -246,6 +246,35 @@
       ],
       "run_at": "document_idle",
       "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://admin.csdlksk.vn/*"
+      ],
+      "js": [
+        "ksk_admin.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://csdlyte.danang.gov.vn/*"
+      ],
+      "js": [
+        "ksk_csdlyte_main.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://csdlyte.danang.gov.vn/records*",
+        "https://csdlyte.danang.gov.vn/login*"
+      ],
+      "js": [
+        "ksk_csdlyte.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
