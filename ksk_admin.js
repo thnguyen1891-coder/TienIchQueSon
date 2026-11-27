@@ -151,17 +151,34 @@
   // Gõ tên vào ô "Họ và tên" rồi bấm Tìm kiếm; chờ bảng chỉ còn đúng tên đó (hoặc "Không có dữ liệu").
   async function filterByName(name) {
     const inp = [...document.querySelectorAll('input')].find((i) => /Họ và tên/i.test(i.placeholder || ''));
-    const search = [...document.querySelectorAll('button')].find((b) => /Tìm kiếm/.test(b.innerText));
-    if (!inp || !search) return false;
+    if (!inp) return false;
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
     setter.call(inp, name);
     inp.dispatchEvent(new Event('input', { bubbles: true }));
     inp.dispatchEvent(new Event('change', { bubbles: true }));
     await sleep(300);
-    search.click();
+    // Sau mỗi lần xóa Cổng tự tải lại danh sách; trong lúc đó nút Tìm kiếm bị khóa và bấm không ăn.
+    // → Chờ Cổng rảnh rồi mới bấm; xác nhận lệnh tìm đã chạy (bảng có thay đổi), nếu không thì bấm lại.
+    let ran = false;
+    for (let k = 0; k < 4 && !ran; k++) {
+      await waitFor(() => {
+        const b = [...document.querySelectorAll('button')].find((x) => /Tìm kiếm/.test(x.innerText));
+        return b && !b.disabled && !isLoading();
+      }, 60000);
+      const table = (document.querySelector('tbody') || {}).parentElement || document.body;
+      let changed = 0;
+      const mo = new MutationObserver((ms) => { changed += ms.length; });
+      mo.observe(table, { childList: true, subtree: true, characterData: true });
+      const b = [...document.querySelectorAll('button')].find((x) => /Tìm kiếm/.test(x.innerText));
+      if (b) b.click();
+      await waitFor(() => changed > 0, 6000);
+      mo.disconnect();
+      ran = changed > 0;
+    }
+    if (!ran) return false;
     // Ô tìm tên là tìm GẦN ĐÚNG (LÊ THỊ MINH ra cả LÊ THỊ MINH HƯƠNG) → chỉ cần mọi dòng CHỨA tên.
     // Trong lúc tải, bảng có thể tạm trống → đợi hết "Loading" và bảng ổn định 2 lần liên tiếp.
-    await sleep(1200);
+    await sleep(800);
     const snap = () => {
       if (isLoading()) return null;
       const body = document.querySelector('tbody');
@@ -177,7 +194,7 @@
       if (s && s === last) return true;
       last = s;
       return false;
-    }, 20000);
+    }, 60000);
     return !!ok;
   }
   function isLoading() {
@@ -233,10 +250,13 @@
             await new Promise((r) => chrome.storage.local.set({ kskDone: done }, r));
           }
           else if (res.hung) { t.delSent = Date.now(); t.note = res.msg; if (t.delTries >= MAX_DEL_TRIES) t.status = 'delfail'; }
-          else if (t.delTries >= 2 || !/lọc|menu|hộp xác nhận/.test(res.msg)) { t.status = 'delfail'; t.note = res.msg; }
+          else if (t.delTries >= MAX_DEL_TRIES || !/lọc|menu|hộp xác nhận/.test(res.msg)) { t.status = 'delfail'; t.note = res.msg; }
+          else { t.note = `${res.msg} — thử lại (${t.delTries}/${MAX_DEL_TRIES})`; res.reload = true; }
         }
         await setQ(q2);
         if (res.hung) { log('Cổng phản hồi chậm — tải lại trang và tiếp tục…'); await sleep(1500); location.reload(); return; }
+        // Lỗi tạm (Cổng bận, không lọc được…) → nghỉ một chút, tải lại trang rồi thử lại
+        if (res.reload) { log('Cổng đang bận — chờ 10 giây, tải lại trang rồi thử lại…'); await sleep(10000); location.reload(); return; }
         await sleep(1200);
       }
       await new Promise((r) => chrome.storage.local.set({ [DKEY]: { active: false } }, r));
@@ -346,6 +366,10 @@
 
   async function autoDelete() {
     const q = await getQ();
+    // Hồ sơ lỗi do Cổng bận ("không lọc được theo tên") → cho thử lại
+    let reset = 0;
+    for (const x of q) if (x.status === 'delfail' && /không lọc được|bận|chậm/.test(x.note || '')) { x.status = 'matched'; x.delTries = 0; reset++; }
+    if (reset) await setQ(q);
     if (!q.some((x) => x.status === 'matched')) return goPhase(q.some((x) => x.status === 'deleted') ? 'sign' : 'scan', 'Không có hồ sơ cần xóa');
     await new Promise((r) => chrome.storage.local.set({ [DKEY]: { active: true } }, r));
     await waitSettled();
