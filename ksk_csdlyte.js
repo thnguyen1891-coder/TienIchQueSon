@@ -36,6 +36,51 @@
     const doc = new DOMParser().parseFromString(html, 'text/html');
     return [...doc.querySelectorAll('tbody tr')].map((r) => r.textContent.replace(/\s+/g, ' ')).filter((t) => /#\d{5,}/.test(t));
   }
+  // Mở hồ sơ trong iframe ẩn (trang chi tiết tự tải dữ liệu bằng JS) để đọc Số CCCD và Ngày khám.
+  function labelOf(input) {
+    const w = input.closest('label');
+    if (w) return w.textContent;
+    let p = input.parentElement;
+    for (let k = 0; k < 3 && p; k++) {
+      const l = [...p.querySelectorAll('label,span,div')].find((x) => x !== input && !x.contains(input) && x.textContent.trim());
+      if (l) return l.textContent;
+      p = p.parentElement;
+    }
+    return '';
+  }
+  function readDetail(id) {
+    return new Promise((resolve) => {
+      const fr = document.createElement('iframe');
+      fr.style.cssText = 'position:fixed;left:-3000px;top:0;width:1200px;height:900px;visibility:hidden';
+      fr.src = '/records/' + id;
+      let done = false;
+      const finish = (v) => { if (done) return; done = true; clearInterval(t); fr.remove(); resolve(v); };
+      const started = Date.now();
+      const t = setInterval(() => {
+        if (Date.now() - started > 20000) return finish(null);
+        let doc;
+        try { doc = fr.contentDocument; } catch (e) { return finish(null); }
+        if (!doc || !doc.body) return;
+        if (/\/login/.test(fr.contentWindow.location.pathname)) return finish({ login: true });
+        let cccd = '', ngayKham = '';
+        for (const i of doc.querySelectorAll('input')) {
+          const lab = labelOf(i);
+          if (!cccd && /Số CCCD|định danh/i.test(lab) && i.value) cccd = i.value.replace(/\s+/g, '');
+          if (!ngayKham && /^\s*Ngày khám/i.test(lab) && i.value) ngayKham = i.value.trim();
+        }
+        if (cccd && ngayKham) finish({ cccd, ngayKham });
+      }, 400);
+      document.body.appendChild(fr);
+    });
+  }
+  // csdlksk che giữa CCCD (vd 049******205): so 3 số đầu, 3 số cuối và độ dài.
+  function cccdMatch(masked, full) {
+    if (!masked || !full) return false;
+    if (masked.length !== full.length) return false;
+    for (let i = 0; i < masked.length; i++) if (masked[i] !== '*' && masked[i] !== full[i]) return false;
+    return true;
+  }
+
   async function findMatches(it) {
     const all = [];
     const reName = new RegExp('(?:^|[\\d\\s#])' + esc(it.name) + '\\s*(\\d\\d/\\d\\d/(\\d{4}))');
@@ -64,12 +109,20 @@
         log(`Đối chiếu ${++i}/${todo.length}: ${it.name}…`);
         let m;
         try { m = await findMatches(it); } catch (e) { log(String(e.message || e)); return; }
-        const byDate = m.filter((x) => x.created === it.ngayKham);
+        // Khớp theo: họ tên + năm sinh (ở bước tìm) + Số CCCD + Ngày khám (đọc trong hồ sơ)
+        const ok = [], other = [];
+        for (const c of m.slice(0, 6)) {
+          log(`Đối chiếu ${i}/${todo.length}: ${it.name} — mở hồ sơ #${c.id}…`);
+          const d = await readDetail(c.id);
+          if (d && d.login) { log('Hết phiên đăng nhập csdlyte — đăng nhập lại rồi bấm Đối chiếu.'); return; }
+          if (d && cccdMatch(it.cccd, d.cccd) && d.ngayKham === it.ngayKham) ok.push(c);
+          else other.push(`${c.kho} #${c.id}` + (d ? ` khám ${d.ngayKham}${cccdMatch(it.cccd, d.cccd) ? '' : ', CCCD khác'}` : ' (không đọc được)'));
+        }
         let patch;
-        if (byDate.length === 1) patch = { status: 'matched', kho: byDate[0].kho, id: byDate[0].id, note: `${byDate[0].kho} #${byDate[0].id}` };
-        else if (byDate.length > 1) patch = { status: 'ambiguous', note: byDate.map((x) => x.kho + ' #' + x.id).join(', ') };
-        else if (m.length) patch = { status: 'review', note: 'khác ngày: ' + m.map((x) => `${x.kho} #${x.id} tạo ${x.created}`).join(', ') };
-        else patch = { status: 'nomatch', note: '' };
+        if (ok.length === 1) patch = { status: 'matched', kho: ok[0].kho, id: ok[0].id, note: `${ok[0].kho} #${ok[0].id}` };
+        else if (ok.length > 1) patch = { status: 'ambiguous', note: ok.map((x) => x.kho + ' #' + x.id).join(', ') };
+        else if (m.length) patch = { status: 'nomatch', note: 'không khớp CCCD/ngày khám: ' + other.join('; ') };
+        else patch = { status: 'nomatch', note: 'không có hồ sơ cùng tên + năm sinh' };
         await updateItem(it, patch);
       }
       log('Đối chiếu xong. Quay lại csdlksk bấm "Xóa hồ sơ đã khớp".');
