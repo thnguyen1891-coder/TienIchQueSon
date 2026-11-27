@@ -10,6 +10,7 @@
   const QKEY = 'kskQueue', RKEY = 'kskRun', FLAG = '__tiq_ksk_autoconfirm';
   const KHO = ['ksk96', 'ksk72'];
   const MAX_TRIES = 6; // mỗi bước
+  const MAX_ROUNDS = 2; // số vòng làm lại (ký lại + đẩy lại) thêm khi lỗi → tổng cộng 3 lần
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const norm = (s) => (s || '').replace(/\s+/g, ' ').trim().toUpperCase();
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -169,6 +170,16 @@
     if (!onUrl(it)) { location.href = urlFor(it); return; }
 
     const stage = it.stage || 'unmark';
+    // Hồ sơ lỗi: làm lại TỪ ĐẦU (hủy liên thông → ký số lại → đẩy lại) thêm tối đa MAX_ROUNDS vòng rồi mới báo lỗi
+    const failItem = async (note) => {
+      const rounds = it.rounds || 0;
+      if (rounds < MAX_ROUNDS) {
+        await updateItem(it, { stage: 'unmark', tries: 0, unmarks: 0, signedAt: 0, why: '', rounds: rounds + 1, note: `vòng ${rounds + 2}: ký lại & đẩy lại (lần trước: ${note})` });
+      } else {
+        await updateItem(it, { status: 'error', tries: 0, note: `${note} (đã thử ${rounds + 1} vòng)` });
+      }
+      location.reload();
+    };
     // Thông báo (alert) của trang bị ksk_csdlyte_main.js chặn khi đang chạy → đọc lại để biết Cổng báo gì
     let lastAlert = '';
     try { lastAlert = sessionStorage.getItem('__tiq_ksk_lastalert') || ''; sessionStorage.removeItem('__tiq_ksk_lastalert'); } catch (e) {}
@@ -176,16 +187,12 @@
       await updateItem(it, { why: 'trang báo: ' + lastAlert.slice(0, 160) });
       it.why = 'trang báo: ' + lastAlert.slice(0, 160);
       if (/lỗi|thất bại|không thể|không hợp lệ|thiếu|chưa ký|từ chối|error/i.test(lastAlert) && !/Đã gửi/i.test(lastAlert)) {
-        await updateItem(it, { status: 'error', note: `bước ${stage}: ${lastAlert.slice(0, 200)}`, tries: 0 });
-        location.reload(); return;
+        return failItem(`bước ${stage}: ${lastAlert.slice(0, 200)}`);
       }
     }
     // Đếm số lần thử THEO TỪNG BƯỚC; ghi lại lý do lần thử trước để biết kẹt vì sao.
     const tries = (it.tries || 0) + 1;
-    if (tries > MAX_TRIES) {
-      await updateItem(it, { status: 'error', note: `kẹt ở bước ${stage}${it.why ? ': ' + it.why : ''}`, tries: 0 });
-      location.reload(); return;
-    }
+    if (tries > MAX_TRIES) return failItem(`kẹt ở bước ${stage}${it.why ? ': ' + it.why : ''}`);
     await updateItem(it, { tries });
     const retry = async (why, ms = 1500) => { await updateItem(it, { why }); setTimeout(() => location.reload(), ms); };
     const goStage = async (s, extra = {}) => { await updateItem(it, Object.assign({ stage: s, tries: 0, why: '' }, extra)); };
@@ -212,7 +219,7 @@
       if (linked) {
         // Hủy chưa ăn hoặc hồ sơ đã được đẩy lại (vd. bạn tự đẩy tay)
         if (it.signedAt) { await updateItem(it, { status: 'pushed', stage: '', tries: 0, note: 'đã lên Cổng', pushedAt: Date.now() }); location.reload(); return; }
-        if ((it.unmarks || 0) >= 2) { await updateItem(it, { status: 'error', note: 'hủy đánh dấu liên thông không được — kiểm tra tay' }); location.reload(); return; }
+        if ((it.unmarks || 0) >= 2) return failItem('hủy đánh dấu liên thông không được');
         await goStage('unmark'); location.reload(); return;
       }
       document.querySelectorAll('tbody input[type=checkbox]:checked').forEach((c) => c.click());
@@ -253,8 +260,13 @@
       if (!lt) return retry('không thấy nút Liên thông của hồ sơ');
       if (!it.why || !/^trang báo/.test(it.why)) await updateItem(it, { why: `đã bấm Liên thông ${tries} lần, hồ sơ chưa chuyển "Chờ Cổng ETL"` });
       lt.click();
-      // Chờ lâu hơn để Cổng kịp nhận (trang thường tự tải lại khi đẩy xong)
-      setTimeout(() => location.reload(), 10000);
+      // Sau khi bấm, trang gọi /api/byt/sync (mất vài giây đến vài chục giây) rồi mới đổi sang "Chờ Cổng ETL"
+      // ngay trên dòng. KHÔNG tải lại trang giữa chừng (sẽ cắt ngang việc đẩy) — chờ tại chỗ tối đa 2 phút.
+      const done = await waitFor(() => { const r2 = findRow(it.id); return r2 && /Chờ Cổng ETL|Đã liên thông/.test(r2.innerText); }, 120000);
+      if (done) {
+        await updateItem(it, { status: 'pushed', stage: '', tries: 0, why: '', pushedAt: Date.now(), note: 'Chờ Cổng ETL' });
+      }
+      location.reload();
     }
   }
 
@@ -303,6 +315,16 @@
       if (a.phase === 'sign') {
         const run = await get(RKEY, { active: false });
         if (run.active) return; // đang chạy (step được gọi khi tải trang)
+        // Hồ sơ lỗi từ trước (chưa dùng hết số vòng) → đưa lại vào hàng ký lại & đẩy lại
+        const q = await get(QKEY, []);
+        let again = 0;
+        for (const x of q) {
+          if (x.status === 'error' && x.id && (x.rounds || 0) < MAX_ROUNDS) {
+            Object.assign(x, { status: 'deleted', stage: 'unmark', tries: 0, unmarks: 0, signedAt: 0, why: '', rounds: (x.rounds || 0) + 1, note: `thử lại vòng ${(x.rounds || 0) + 2}` });
+            again++;
+          }
+        }
+        if (again) await set(QKEY, q);
         await set(RKEY, { active: true, autoSign: true, auto: true });
         render();
         step();
