@@ -504,7 +504,7 @@
       }
       if (!tr) c.altMiss = (c.altMiss || 0) + 1;
     }
-    if (!tr) return { code, result: 'skip', note: 'Không có phiếu' };
+    if (!tr) return { code, result: 'skip', note: 'Không có phiếu (coi như đã ký, lần sau bỏ qua)' };
     let st = rowStatus(tr);
     // Phiếu XML "Đã cập nhật" (đã từng ký rồi bị HỦY KÝ, VD khoa hủy để sửa bệnh) và KHÔNG còn nút Hủy ký số (X)
     // = hiện đang chưa có chữ ký -> ký lại
@@ -1427,7 +1427,9 @@
       log('Chạy thử xong. Cửa sổ ký số để mở cho bạn kiểm tra viền đỏ có đúng nút Ký không.');
       return [];
     }
-    const results = [];
+    // Kết quả từng phiếu ghi thẳng vào ctxInfo: nếu bước sau lỗi (VD không đóng được cửa sổ Ký số)
+    // vẫn giữ được kết quả phiếu đã xong (VD CT03 "Không có phiếu") để lần sau không kiểm tra lại
+    const results = opts.ctxInfo ? (opts.ctxInfo.results = []) : [];
     for (const code of codes) {
       if (stopRequested) break;
       let r;
@@ -1611,7 +1613,9 @@
           summary.error++;
           summary.failed.push(`${p.name}: ${err.message}`);
           ui.log(`  ❌ ${err.message}`);
-          rs.push(...pCodes.map(c => ({ code: c, result: 'error', note: err.message })));
+          // Giữ kết quả các phiếu đã xử lý xong trước khi lỗi; phiếu chưa có kết quả mới tính là lỗi
+          rs = [...(ctxInfo.results || [])];
+          rs.push(...pCodes.filter(c => !rs.some(r => r.code === c)).map(c => ({ code: c, result: 'error', note: err.message })));
           if (err.message !== 'Đã dừng') {
             // Cửa sổ ký số còn mở thì cố đóng để qua BN kế tiếp
             const ks = findKySoScope();
