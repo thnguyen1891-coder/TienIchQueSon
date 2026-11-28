@@ -141,19 +141,52 @@
   }
 
   // Giá trị ô nhập ngay sau nhãn (phần thông tin bên phải)
-  function valueAfterLabel(labelRe) {
-    const labels = Array.from(document.querySelectorAll('td, label, span, div'))
-      .filter(el => labelRe.test(ownText(el)) && isVisible(el) && !el.closest('.ui-jqgrid'));
+  // Trả về giá trị của MỌI nhãn khớp (trang có thể có nhiều khối cùng nhãn, VD "Họ tên" ở form + ở hộp thoại)
+  function valuesAfterLabel(labelRe, allowText = true) {
+    const labelText = el => ownText(el).normalize('NFC').replace(/[:*\s]+$/, '').trim();
+    const labels = Array.from(document.querySelectorAll('td, th, label, span, div, b, strong'))
+      .filter(el => labelRe.test(labelText(el)) && isVisible(el) && !el.closest('.ui-jqgrid, #bhyt-ksh-panel'));
+    const out = [];
     for (const lb of labels) {
+      // 1) <label for="...">
+      const forId = lb.getAttribute('for');
+      const byFor = forId && document.getElementById(forId);
+      if (byFor && 'value' in byFor && isVisible(byFor)) { out.push(String(byFor.value || '').trim()); continue; }
+      // 2) Ô nhập / ô chữ đứng ngay sau nhãn
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
       walker.currentNode = lb;
-      let n, steps = 0;
-      while ((n = walker.nextNode()) && steps++ < 40) {
-        if (n.tagName === 'INPUT' && n.type !== 'hidden' && n.type !== 'checkbox' && isVisible(n)) return (n.value || '').trim();
+      let n, steps = 0, val = null;
+      while ((n = walker.nextNode()) && steps++ < 60) {
+        if (lb.contains(n)) continue;
+        if ((n.tagName === 'INPUT' && !/^(hidden|checkbox|radio|button)$/i.test(n.type)) || n.tagName === 'TEXTAREA') {
+          if (isVisible(n)) { val = String(n.value || '').trim(); break; }
+          continue;
+        }
+        if (n.tagName === 'SELECT') continue;
+        // Ô hiển thị dạng chữ (span/td) ngay sau nhãn, không phải nhãn khác
+        const t = ownText(n).normalize('NFC');
+        if (allowText && /[A-Za-zÀ-ỹĐđ].*[A-Za-zÀ-ỹĐđ]/.test(t) && isVisible(n)) {
+          if (/[:：]\s*$/.test(t) || n.tagName === 'LABEL') break; // gặp nhãn kế tiếp -> dừng
+          val = t.trim(); break;
+        }
       }
+      if (val !== null) out.push(val);
     }
-    return '';
+    return out;
   }
+  // Số BA...: chỉ đọc ô nhập (như trước), không đoán theo chữ
+  const valueAfterLabel = re => valuesAfterLabel(re, false).find(v => v) || '';
+
+  // Tên trên khung thông tin khớp tên trên lưới? (lưới có thể cắt bớt tên / thêm "..." ; khung thông tin có thể kèm tuổi...)
+  function sameName(shown, p) {
+    const a = normName(shown).replace(/\.{2,}|…/g, '').trim();
+    if (!a) return false;
+    return [p.name, p.fullName].some(x => {
+      const b = normName(x).replace(/\.{2,}|…/g, '').trim();
+      return b && (a === b || (b.length >= 6 && a.startsWith(b)) || (a.length >= 6 && b.startsWith(a)));
+    });
+  }
+  const HOTEN_RE = /^Họ (và )?tên( bệnh nhân| BN| người bệnh)?$/i;
 
   async function selectPatient(p) {
     const grid = findPatientGrid();
@@ -167,9 +200,16 @@
     }
     const td = row.querySelectorAll(':scope > td')[p.iName];
     click(td || row);
-    const ok = await waitFor(() => normName(valueAfterLabel(/^Họ tên$/i)) === normName(p.name), 15000, 100);
-    if (!ok) throw new Error('Chọn bệnh nhân nhưng phần thông tin bên phải không đổi');
-    return { soBa: valueAfterLabel(/^Số BA$/i) };
+    const ok = await waitFor(() => valuesAfterLabel(HOTEN_RE).some(v => sameName(v, p)), 15000, 100);
+    if (!ok) {
+      const shown = valuesAfterLabel(HOTEN_RE).filter(Boolean);
+      const rowSelected = row.getAttribute('aria-selected') === 'true' || row.classList.contains('ui-state-highlight');
+      // Không đọc được ô "Họ tên" nhưng dòng đã được chọn -> vẫn làm tiếp
+      // (an toàn: khi mở cửa sổ Ký số sẽ kiểm tra lại đúng tên bệnh nhân)
+      if (!shown.length && rowSelected) return { soBa: valueAfterLabel(/^Số (BA|bệnh án)$/i), unverified: true };
+      throw new Error(`Chọn bệnh nhân nhưng phần thông tin bên phải không đổi (đang hiện: "${shown.join(' / ') || 'không đọc được ô Họ tên'}", cần: "${p.fullName || p.name}")`);
+    }
+    return { soBa: valueAfterLabel(/^Số (BA|bệnh án)$/i) };
   }
 
   // ---------- Cửa sổ Ký số VNPTCA ----------
