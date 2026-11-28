@@ -26455,11 +26455,14 @@
       }, true);
     }
 
-    let activePulseTimer = null;
+    // KHÔNG quét đồng bộ trong lúc đang xử lý click (chạy trước cả code của HIS vì gắn ở pha capture)
+    // -> để HIS xử lý click/menu xong trước rồi mới quét (nhiều click liên tiếp chỉ quét 1 lần)
+    let activePulseTimer = null, activePulseTimer2 = null;
     triggerActiveInjectionPulse = function (duration = 2000) {
       if (activePulseTimer) clearTimeout(activePulseTimer);
-      tryInjectSuattModalButton();
-      activePulseTimer = setTimeout(tryInjectSuattModalButton, 350);
+      if (activePulseTimer2) clearTimeout(activePulseTimer2);
+      activePulseTimer = setTimeout(tryInjectSuattModalButton, 60);
+      activePulseTimer2 = setTimeout(tryInjectSuattModalButton, 400);
     };
     window.__triggerActiveInjectionPulse = triggerActiveInjectionPulse;
 
@@ -26573,10 +26576,10 @@
       // Khởi tạo tính năng tự động đóng context menu cho document này
       initContextMenuAutoClose(doc);
 
-      // 1. BẮT SỰ KIỆN CHUỘT PHẢI (CONTEXTMENU) TRÊN TOÀN DOCUMENT:
-      doc.addEventListener('contextmenu', (e) => {
-        triggerActiveInjectionPulse(2000);
-      }, true);
+      // 1. CHUỘT PHẢI: KHÔNG quét gì cả.
+      // Chuột phải chỉ mở menu (chưa có hộp thoại nào) -> quét ở đây chỉ làm đơ trang ~130ms đúng lúc HIS dựng menu
+      // (trang bảng kê có ~60 hộp thoại ẩn), khiến menu chuột phải / click sau đó chậm, lúc được lúc không.
+      // Hộp thoại mở ra sau khi bấm MỤC trong menu -> đã có bước 2 (click) + MutationObserver lo.
 
       // 2. BẮT SỰ KIỆN CLICK CHUỘT TRÊN TOÀN DOCUMENT:
       // Chỉ kích hoạt pulse khi bấm vào menu item hoặc nút sửa (0% lãng phí CPU cho click thông thường)
@@ -26600,10 +26603,7 @@
         }
       }, true);
 
-      // 3. Bắt sự kiện auxclick (nhả chuột phải / chuột giữa)
-      doc.addEventListener('auxclick', () => {
-        triggerActiveInjectionPulse(1500);
-      }, true);
+      // 3. (Bỏ) auxclick - nhả chuột phải: cùng lý do như bước 1.
 
       // 4. Lắng nghe phím Enter hoặc phím tắt mở modal (BẢO VỆ HIỆU NĂNG: Bỏ qua hoàn toàn khi đang gõ phím / nhập toa thuốc)
       doc.addEventListener('keydown', (e) => {

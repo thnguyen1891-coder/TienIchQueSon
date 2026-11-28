@@ -51,7 +51,35 @@
   const todayVN = () => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; };
 
   const SIGN_WAIT_MS = 8000; // thời gian chờ tối đa mỗi phiếu chuyển "Đã ký" sau khi bấm Ký
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // Hẹn giờ qua Web Worker: khi tab HIS bị ẩn / chạy nền lâu, Chrome hãm setTimeout của trang còn ~1 lần/phút
+  // -> mọi vòng chờ (15 giây chọn BN, 8 giây chờ "Đã ký") chỉ kịp kiểm tra 1 lần rồi báo lỗi dù HIS đã xong.
+  // Hẹn giờ trong Worker không bị hãm như vậy. Không tạo được Worker thì dùng setTimeout như cũ.
+  let slowTimerWarned = false;
+  const sleep = (() => {
+    let worker = null, seq = 0;
+    const pending = new Map();
+    try {
+      const src = 'onmessage=function(e){setTimeout(function(){postMessage(e.data.id)},e.data.ms)}';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = e => { const f = pending.get(e.data); if (f) { pending.delete(e.data); f(); } };
+      worker.onerror = () => { worker = null; pending.forEach(f => f()); pending.clear(); };
+    } catch (_) { worker = null; }
+    return ms => new Promise(r => {
+      const t0 = Date.now();
+      const done = () => {
+        if (!slowTimerWarned && running && Date.now() - t0 > ms + 5000) {
+          slowTimerWarned = true;
+          console.warn('[Ký hàng loạt] Trình duyệt đang hãm hẹn giờ (tab bị ẩn?) - nên để tab HIS hiển thị khi chạy');
+        }
+        r();
+      };
+      if (!worker) { setTimeout(done, ms); return; }
+      const id = ++seq;
+      pending.set(id, done);
+      try { worker.postMessage({ id, ms }); } catch (_) { pending.delete(id); setTimeout(done, ms); return; }
+      setTimeout(() => { if (pending.delete(id)) done(); }, ms + 2000); // dự phòng Worker không trả lời
+    });
+  })();
   const normName = s => String(s || '').normalize('NFC').replace(/\s+/g, ' ').trim().toUpperCase();
   let stopRequested = false;
   let running = false;
@@ -98,7 +126,9 @@
       if (v) return v;
       await sleep(interval);
     }
-    return null;
+    // Kiểm tra lần cuối sau khi hết giờ (hẹn giờ bị hãm có thể làm vòng lặp hết giờ ngay sau 1 lần chờ)
+    if (stopRequested) throw new Error('Đã dừng');
+    return fn() || null;
   }
 
   // ---------- Danh sách bệnh nhân (lưới bên trái) ----------
