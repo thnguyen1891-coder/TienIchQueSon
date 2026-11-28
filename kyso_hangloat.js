@@ -333,14 +333,16 @@
       if (/^Đã ký/i.test(st)) return 'done';
       if (/^Chưa ký/i.test(st)) return 'todo';
       if (/^Đã cập nhật/i.test(st)) return 'partial'; // Bảng kê: đã có người ký một phần
+      if (/kh(óa|oá)/i.test(st)) return 'locked'; // "Đã khóa": bấm Ký 1 lần -> HIS hỏi mở khóa -> OK -> ký lại
       return 'unknown';
     }
     const tds = Array.from(tr.querySelectorAll(':scope > td'));
-    const statusTd = tds.find(td => /^(Đã ký|Chưa ký|Đã cập nhật|Đang ký|Ký lỗi)/i.test((td.textContent || '').normalize('NFC').trim()))
+    const statusTd = tds.find(td => /^(Đã ký|Chưa ký|Đã cập nhật|Đang ký|Ký lỗi|Đã kh(óa|oá))/i.test((td.textContent || '').normalize('NFC').trim()))
       || tds[1];
     const t = ((statusTd || tr).textContent || '').normalize('NFC').trim();
     if (/Đã ký/i.test(t)) return 'done';
     if (/Chưa ký/i.test(t)) return 'todo';
+    if (/Đã kh(óa|oá)/i.test(t)) return 'locked';
     return 'unknown';
   }
 
@@ -400,13 +402,17 @@
   }
 
   function isInDocGridRow(el) {
+    if (el.closest('tr.jqgrow, #smartca-ad-grid-thong-tin-phieu')) return true; // ô trong lưới phiếu (VD trạng thái "Đã khóa")
     const tr = el.closest('tr');
-    return !!(tr && /Đã ký|Chưa ký|Đã cập nhật/i.test(tr.textContent || ''));
+    return !!(tr && /Đã ký|Chưa ký|Đã cập nhật|Đã kh(óa|oá)/i.test(tr.textContent || ''));
   }
 
   const NODATA_RE = /không có dữ liệu|không tìm thấy dữ liệu|không tải được tài liệu|không tải được file|không có file/i;
-  const LOCK_RE = /bị kh[oó]a|bị khoá|để mở kh[oó]a|mở khoá/i;
-  const UNLOCKED_RE = /đã được mở kh[oó]a|đã mở kh[oó]a|đã được mở khoá/i;
+  // "khóa" có 2 cách bỏ dấu: khóa / khoá (chữ đã chuẩn hóa NFC)
+  // Hộp hỏi mở khóa: "Phiếu đang bị KHÓA...", "Phiếu đã khóa, nhấn xác nhận để mở khóa", "Bạn có muốn mở khóa..."
+  const LOCK_RE = /(bị|đã|đang)\s+kh(óa|oá)|mở\s+kh(óa|oá)/i;
+  // Đã mở khóa xong ("Phiếu đã được mở khóa", "Mở khóa thành công") -> phải bấm Ký lại (KHÔNG phải ký thành công)
+  const UNLOCKED_RE = /(đã được|đã)\s+mở\s+kh(óa|oá)|mở\s+kh(óa|oá)\s+(phiếu\s+)?thành công/i;
   // Cảnh báo chỉ để biết (bấm Xác nhận rồi làm tiếp), VD sau khi ký lại XML: "Số lần gửi XML 130 hoặc 4210 vượt quá 1 lần..."
   // (HIS viết sai chính tả "vướt quá" -> chỉ dựa vào cụm "Số lần gửi XML"; có cả hộp SmartCA lẫn jAlert "Cảnh báo")
   const INFO_RE = /Số lần gửi XML/i;
@@ -541,6 +547,8 @@
     if (st === 'partial' && !tr.querySelector('[data-type="btn-huy-ky-so"]')) { st = 'todo'; ctx.log(`  ${code}: đã bị hủy ký trước đó -> ký lại`); }
     if (st === 'done') return { code, result: 'skip', note: 'Đã ký từ trước' };
     if (st === 'partial') return { code, result: 'skip', note: 'Đã ký (Đã cập nhật, còn nút Hủy ký số)' };
+    // "Đã khóa": bấm Ký 1 lần để HIS hỏi mở khóa -> tự bấm OK -> chờ mở khóa xong -> ký lại (xử lý trong vòng chờ bên dưới)
+    if (st === 'locked') { st = 'todo'; ctx.log(`  ${code}: 🔒 phiếu đang khóa -> bấm Ký để mở khóa rồi ký lại`); }
     if (st !== 'todo') return { code, result: 'error', note: 'Không rõ trạng thái: ' + (tr.textContent || '').replace(/\s+/g, ' ').slice(0, 80) };
     let { btn, why } = findSignButton(tr);
     if (!btn) return { code, result: 'error', note: why };
@@ -556,17 +564,36 @@
       handleMessageBoxes();
       // "Phiếu này đang bị KHÓA ... Nhấn xác nhận để mở khóa" -> đã bấm Xác nhận; chờ rồi bấm Ký lại
       if (lastLockAt > clickedAt) {
-        if (++unlockTries > 2) { errMsg = 'Phiếu bị khóa, đã mở khóa 2 lần vẫn không ký được'; break; }
-        ctx.log(`  ${code}: 🔓 phiếu bị khóa -> đã mở khóa, ký lại (lần ${unlockTries})`);
-        // Có thể HIS tự ký luôn sau khi mở khóa -> chờ 2 giây xem có "thành công" không
-        const unlockAt = Date.now();
-        await waitFor(() => { handleMessageBoxes(); return lastSuccessAt > unlockAt || lastErrorAt > unlockAt; }, 2000, 150);
-        if (lastSuccessAt > unlockAt) { await sleep(600); await waitGridStable(ctx); return { code, result: 'ok', note: 'Đã ký (sau khi mở khóa)' }; }
+        if (++unlockTries > 3) { errMsg = 'Phiếu bị khóa, đã mở khóa 3 lần vẫn không ký được'; break; }
+        ctx.log(`  ${code}: 🔓 HIS hỏi mở khóa -> đã bấm OK, chờ mở khóa xong rồi ký lại (lần ${unlockTries})`);
+        // Chờ HIS mở khóa XONG rồi mới bấm Ký lại (bấm sớm quá HIS lại hỏi mở khóa -> trước đây mắc kẹt ở bước này):
+        //  - có thông báo "đã mở khóa / mở khóa thành công", hoặc
+        //  - HIS tự ký luôn (báo ký thành công) / báo lỗi, hoặc
+        //  - sau ít nhất 2,5 giây, dòng phiếu hết trạng thái "Đã khóa" và lưới đứng yên. Tối đa 12 giây.
+        const lockAt = lastLockAt;
+        let lastSig = '', sigSince = Date.now();
+        await waitFor(() => {
+          handleMessageBoxes();
+          if (lastUnlockedAt > lockAt || lastSuccessAt > lockAt || lastErrorAt > lockAt) return true;
+          if (lastLockAt > lockAt) return true; // lại hỏi mở khóa (đã bấm OK) -> xử lý ở vòng sau
+          const cur = currentKySoFor(ctx);
+          const row = cur && rowForCode(cur, code);
+          const s = row ? rowStatus(row) : '';
+          const sig = cur ? findDocRows(cur).map(r => r.textContent).join('|') : '';
+          if (sig !== lastSig) { lastSig = sig; sigSince = Date.now(); }
+          return Date.now() - lockAt >= 2500 && s && s !== 'locked' && Date.now() - sigSince >= 600 && !messageBoxVisible();
+        }, 12000, 200);
+        if (lastLockAt > lockAt) { clickedAt = lockAt; start = Date.now(); continue; } // HIS hỏi lại -> vòng sau đếm thêm 1 lần
+        if (lastErrorAt > lockAt) { errMsg = lastErrorMsg; break; }
+        if (lastSuccessAt > lockAt) { await sleep(600); await waitGridStable(ctx); return { code, result: 'ok', note: 'Đã ký (sau khi mở khóa)' }; }
+        if (lastUnlockedAt > lockAt) await sleep(500); // để HIS đóng hộp thông báo, nạp lại lưới
         await waitGridStable(ctx);
-        const cur = currentKySoFor(ctx);
-        const row = cur && rowForCode(cur, code);
-        if (!row) break;
+        let cur = currentKySoFor(ctx);
+        if (!cur || !findDocRows(cur).length) { try { await ensureKhac(ctx, tabOf); } catch (_) {} cur = currentKySoFor(ctx); }
+        const row = cur && await waitFor(() => rowForCode(currentKySoFor(ctx) || cur, code), 3000, 150);
+        if (!row) { errMsg = 'Đã mở khóa nhưng không thấy lại dòng phiếu để ký lại'; break; }
         if (rowStatus(row) === 'done') return { code, result: 'ok', note: 'Đã ký (sau khi mở khóa)' };
+        ctx.log(`  ${code}: ký lại sau khi mở khóa (trạng thái: ${cellText(row, 'STATUS_F') || rowStatus(row)})`);
         ({ btn, why } = findSignButton(row));
         if (!btn) { errMsg = why; break; }
         clickedAt = Date.now();
@@ -1486,7 +1513,7 @@
             if (prev && prev.nodata) return false;
             const row = cur && rowForCode(cur, code);
             const s = row && rowStatus(row);
-            return row && (s === 'todo' || (s === 'partial' && !row.querySelector('[data-type="btn-huy-ky-so"]')));
+            return row && (s === 'todo' || s === 'locked' || (s === 'partial' && !row.querySelector('[data-type="btn-huy-ky-so"]')));
           }));
         }
       } catch (e) { if (e.message === 'Đã dừng') throw e; log('    kiểm tra lại: ' + e.message); break; }
